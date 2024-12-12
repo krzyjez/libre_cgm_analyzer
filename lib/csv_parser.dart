@@ -6,6 +6,8 @@
 // 2. wiersz z notą - to przykładowy wiersz:
 // FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,10-12-2022 14:12,6,,,,,,,,,,Kasza bulgur,,,,,
 // Note is at index 13
+import 'package:intl/intl.dart';
+
 class CsvParser {
   // private
   List<List<String>> _data = [];
@@ -61,30 +63,13 @@ class CsvParser {
 
   // Parsuje date w formcie 10-12-2024 17:22
   DateTime? _parseDate(String dateTimeString) {
-    var dateTimeParts = dateTimeString.split(' ');
-    var dateParts = dateTimeParts[0].split('-');
-    var timeParts = dateTimeParts[1].split(':');
-
-    if (dateParts.length != 3 || timeParts.length != 2) {
+    try {
+      final dateTime = DateFormat('dd-MM-yyyy HH:mm').parse(dateTimeString);
+      return dateTime;
+    } catch (e) {
       print('Invalid date format: $dateTimeString');
       return null;
     }
-
-    int? year = int.tryParse(dateParts[2]);
-    int? month = int.tryParse(dateParts[1]);
-    int? day = int.tryParse(dateParts[0]);
-    int? hour = int.tryParse(timeParts[0]);
-    int? minute = int.tryParse(timeParts[1]);
-
-    if (year == null ||
-        month == null ||
-        day == null ||
-        hour == null ||
-        minute == null) {
-      return null;
-    }
-
-    return DateTime(year, month, day, hour, minute);
   }
 }
 

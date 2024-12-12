@@ -5,6 +5,7 @@ import 'dart:html' as html;
 import 'csv_parser.dart';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:intl/intl.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,7 +36,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String? _fileName;
-  String? _fileContent;
   final CsvParser _csvParser = CsvParser();
 
   Future<void> pickCsvFile(BuildContext context) async {
@@ -55,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // Bezpieczne aktualizowanie stanu
           setState(() {
             _fileName = file.name;
-            _fileContent = reader.result as String;
+            _csvParser.parseCsv(reader.result as String);
           });
 
           // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
@@ -88,48 +88,66 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _loadDebugData() async {
     final String response = await rootBundle
         .loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
-    _csvParser.parseCsv(response);
+    setState(() {
+      _fileName = 'Dane debugowe';
+      _csvParser.parseCsv(response);
+    });
     print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Libre CGM Analyzer 4'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_upload),
-            tooltip: 'Dodaj plik CSV',
-            onPressed: () => pickCsvFile(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            tooltip: 'Preload Debug Data',
-            onPressed: _loadDebugData,
-          ),
-        ],
-      ),
-      body: Center(
-        child: _fileName == null
-            ? const Text('Wybierz plik CSV')
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Wybrany plik: $_fileName'),
-                  const SizedBox(height: 20),
-                  Text('Pierwsze 100 znaków zawartości:'),
-                  const SizedBox(height: 10),
-                  Text(_fileContent?.substring(
-                          0,
-                          _fileContent!.length > 100
-                              ? 100
-                              : _fileContent!.length) ??
-                      ''),
-                ],
-              ),
-      ),
-    );
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          title: const Text('Libre CGM Analyzer 4'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.file_upload),
+              tooltip: 'Dodaj plik CSV',
+              onPressed: () => pickCsvFile(context),
+            ),
+            IconButton(
+              icon: const Icon(Icons.bug_report),
+              tooltip: 'Preload Debug Data',
+              onPressed: _loadDebugData,
+            ),
+          ],
+        ),
+        body: Center(
+          child: _fileName == null
+              ? const Text('Wybierz plik CSV')
+              : ListView.builder(
+                  itemCount: _csvParser.days.length,
+                  itemBuilder: (context, index) {
+                    final day = _csvParser.days[index];
+                    return Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Nagłówek
+                            Container(
+                              color: Colors.grey[800],
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            // Obszar roboczy
+                            const Text("Buba"),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ));
   }
 }
