@@ -128,14 +128,21 @@ class _MyHomePageState extends State<MyHomePage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Nagłówek
-                            Container(
-                              color: Colors.grey[800],
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                            ClipRRect(
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12.0),
+                                topRight: Radius.circular(12.0),
+                              ),
+                              child: Container(
+                                width: double.infinity,
+                                color: Colors.grey[800],
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
