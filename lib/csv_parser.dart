@@ -70,6 +70,74 @@ class CsvParser {
       return null;
     }
   }
+
+  /// Analizuje okresy wysokiego poziomu glukozy i oblicza ich nasilenie.
+  ///
+  /// Parametry:
+  /// - `measurements`: Lista obiektów `Measurement`, zawierająca dane pomiarowe z danego dnia.
+  /// - `glucoseThreshold`: Wartość progowa glukozy, powyżej której pomiary są uznawane za wysokie.
+  ///
+  /// Zwraca listę obiektów `Period` z czasem rozpoczęcia i zakończenia, punktami i najwyższym pomiarem.
+  List<Period> analyzeHighGlucose(List<Measurement> measurements, int glucoseThreshold) {
+    List<Period> highPeriods = [];
+    DateTime? periodStartTime;
+    int highestMeasure = 0;
+    List<Measurement> periodMeasurements = [];
+
+    // Sort measurements by timestamp
+    measurements.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    for (var i = 0; i < measurements.length; i++) {
+      var measurement = measurements[i];
+      bool isHigh = measurement.glucoseValue > glucoseThreshold;
+
+      if (isHigh) {
+        periodStartTime ??= measurement.timestamp;
+        periodMeasurements.add(measurement);
+        if (measurement.glucoseValue > highestMeasure) {
+          highestMeasure = measurement.glucoseValue;
+        }
+      } else if (periodStartTime != null) {
+        // End current period
+        var periodEndTime = measurement.timestamp;
+        int points = calculatePoints(periodMeasurements, glucoseThreshold);
+        highPeriods.add(Period(
+          startTime: periodStartTime,
+          endTime: periodEndTime,
+          points: points,
+          highestMeasure: highestMeasure,
+        ));
+        periodStartTime = null;
+        periodMeasurements.clear();
+        highestMeasure = 0;
+      }
+    }
+
+    // Handle case where period extends to the end of the day
+    if (periodStartTime != null) {
+      int points = calculatePoints(periodMeasurements, glucoseThreshold);
+      highPeriods.add(Period(
+        startTime: periodStartTime,
+        endTime: measurements.last.timestamp,
+        points: points,
+        highestMeasure: highestMeasure,
+      ));
+    }
+
+    return highPeriods;
+  }
+
+  int calculatePoints(List<Measurement> measurements, int glucoseThreshold) {
+    int points = 0;
+    for (var i = 0; i < measurements.length - 1; i++) {
+      var currentValue = measurements[i].glucoseValue;
+      var currentTime = measurements[i].timestamp;
+      var nextTime = measurements[i + 1].timestamp;
+      var durationMinutes = nextTime.difference(currentTime).inMinutes;
+      points += (currentValue - glucoseThreshold) * durationMinutes;
+    }
+    return points;
+  }
 }
 
 class Measurement {
@@ -89,8 +157,9 @@ class Note {
 /// Dane dla pojedyczego dnia - z systemu LibreCGM
 class DayData {
   final DateTime date;
-  List<Measurement> measurements = [];
-  List<Note> notes = [];
+  final List<Measurement> measurements = [];
+  final List<Note> notes = [];
+  final List<Period> periods = [];
 
   DayData(this.date);
 }
@@ -98,8 +167,25 @@ class DayData {
 /// Dane dla pojedynczego dnia - pochodzące od użytkownika
 class DayUser {
   final DateTime date;
-  List<String> comments = [];
-  List<Note> notes = [];
+  final List<String> comments = [];
+  final List<Note> notes = [];
 
   DayUser(this.date);
+}
+
+/// Wszystkie dane związane z użytkownikiem
+class UserInfo {
+  final int treshold = 140;
+  final List<DayUser> days = [];
+}
+
+/// Zawiera dane pojedynczego okresu - przekroczenia progru bezpieczeństwa wysokości glukozy
+class Period {
+  final DateTime startTime;
+  final DateTime endTime;
+
+  final int points;
+  final int highestMeasure;
+
+  Period({required this.startTime, required this.endTime, required this.points, required this.highestMeasure});
 }

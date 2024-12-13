@@ -39,8 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final CsvParser _csvParser = CsvParser();
 
   Future<void> pickCsvFile(BuildContext context) async {
-    final html.FileUploadInputElement uploadInput =
-        html.FileUploadInputElement()..accept = '.csv';
+    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement()..accept = '.csv';
 
     // Otwórz okno wyboru pliku
     uploadInput.click();
@@ -86,8 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _loadDebugData() async {
-    final String response = await rootBundle
-        .loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
+    final String response = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
     setState(() {
       _fileName = 'Dane debugowe';
       _csvParser.parseCsv(response);

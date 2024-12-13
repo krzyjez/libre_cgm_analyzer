@@ -10,8 +10,7 @@ class DayCardBuilder {
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
   static Widget buildDayCard(DayData day) {
     return Padding(
-      padding: const EdgeInsets.only(
-          left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
+      padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
@@ -90,31 +89,42 @@ class DayCardBuilder {
       color: Colors.red[100], // Kolor tła dla drugiego kontenera
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            child: SfCartesianChart(
-              primaryXAxis: CategoryAxis(),
-              series: <LineSeries<ChartData, String>>[
-                LineSeries<ChartData, String>(
-                  dataSource: [
-                    ChartData('Jan', 35),
-                    ChartData('Feb', 28),
-                    ChartData('Mar', 34),
-                    ChartData('Apr', 32),
-                    ChartData('May', 40)
-                  ],
-                  xValueMapper: (ChartData data, _) => data.x,
-                  yValueMapper: (ChartData data, _) => data.y,
-                )
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(8.0),
-            child: const Text('statystyka'),
-          ),
+          _buildChart(day),
+          _buildStats(),
         ],
       ),
+    );
+  }
+
+  /// Buduje wykres na podstawie danych dnia.
+  static Widget _buildChart(DayData day) {
+    List<ChartData> chartData = day.measurements.map((measurement) {
+      return ChartData(
+        DateFormat('HH:mm').format(measurement.timestamp),
+        measurement.glucoseValue as double,
+      );
+    }).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      child: SfCartesianChart(
+        primaryXAxis: CategoryAxis(),
+        series: <LineSeries<ChartData, String>>[
+          LineSeries<ChartData, String>(
+            dataSource: chartData,
+            xValueMapper: (ChartData data, _) => data.x,
+            yValueMapper: (ChartData data, _) => data.y,
+          )
+        ],
+      ),
+    );
+  }
+
+  /// Buduje sekcję statystyk.
+  static Widget _buildStats() {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      child: const Text('statystyka'),
     );
   }
 
@@ -131,9 +141,7 @@ class DayCardBuilder {
                   child: RichText(
                     text: TextSpan(
                       children: [
-                        _createTextSpan(
-                            '${DateFormat('HH:mm').format(note.timestamp)} ',
-                            fontWeight: FontWeight.bold),
+                        _createTextSpan('${DateFormat('HH:mm').format(note.timestamp)} ', fontWeight: FontWeight.bold),
                         _createTextSpan(note.note),
                       ],
                     ),
@@ -151,9 +159,7 @@ class DayCardBuilder {
   /// [color] - kolor tekstu, domyślnie czarny.
   /// [fontWeight] - grubość czcionki, domyślnie normalna.
   static TextSpan _createTextSpan(String text,
-      {double fontSize = 14,
-      Color color = Colors.black,
-      FontWeight fontWeight = FontWeight.normal}) {
+      {double fontSize = 14, Color color = Colors.black, FontWeight fontWeight = FontWeight.normal}) {
     return TextSpan(
       text: text,
       style: TextStyle(
