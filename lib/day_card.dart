@@ -7,20 +7,24 @@ class DayCardBuilder {
   ///
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
   static Widget buildDayCard(Day day) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Nagłówek
-          _buildHeader(day.date),
-          // Odstęp między nagłówkiem i obszarem roboczym
-          const SizedBox(height: 4.0),
-          // Obszar roboczy
-          _buildWorkingArea(day),
-        ],
+    return Padding(
+      padding: const EdgeInsets.only(
+          left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Nagłówek
+            _buildHeader(day.date),
+            // Odstęp między nagłówkiem i obszarem roboczym
+            const SizedBox(height: 4.0),
+            // Obszar roboczy
+            _buildWorkingArea(day),
+          ],
+        ),
       ),
     );
   }
