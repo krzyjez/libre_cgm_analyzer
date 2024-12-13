@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'csv_parser.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'chart_data.dart';
 
 class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia.
   ///
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
-  static Widget buildDayCard(Day day) {
+  static Widget buildDayCard(DayData day) {
     return Padding(
       padding: const EdgeInsets.only(
           left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
@@ -56,7 +57,7 @@ class DayCardBuilder {
 
   /// Buduje obszar roboczy dla karty dnia.
   /// Zawiera trzy wiersze z tekstem.
-  static Widget _buildWorkingArea(Day day) {
+  static Widget _buildWorkingArea(DayData day) {
     return Padding(
       padding: const EdgeInsets.all(6.0),
       child: Column(
@@ -74,7 +75,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję komentarzy dziennych.
-  static Widget _buildDailyComments(Day day) {
+  static Widget _buildDailyComments(DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.blue[100], // Kolor tła dla pierwszego kontenera
@@ -83,7 +84,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(Day day) {
+  static Widget _buildChartAndStats(DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.red[100], // Kolor tła dla drugiego kontenera
@@ -118,7 +119,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję notatek.
-  static Widget _buildNotes(Day day) {
+  static Widget _buildNotes(DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.yellow[100], // Kolor tła dla trzeciego kontenera
@@ -162,11 +163,4 @@ class DayCardBuilder {
       ),
     );
   }
-}
-
-class ChartData {
-  final String x;
-  final double y;
-
-  ChartData(this.x, this.y);
 }

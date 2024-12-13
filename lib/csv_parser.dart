@@ -11,17 +11,17 @@ import 'package:intl/intl.dart';
 class CsvParser {
   // private
   List<List<String>> _data = [];
-  List<Day> _days = [];
+  List<DayData> _days = [];
 
   // getters
-  List<Day> get days => List.unmodifiable(_days);
+  List<DayData> get days => List.unmodifiable(_days);
   int get rowCount => _data.length;
 
   void parseCsv(String csvContent) {
     _data = csvContent.split('\n').map((line) => line.split(',')).toList();
 
     // Przetwarzanie wierszy CSV
-    Map<DateTime, Day> daysMap = {};
+    Map<DateTime, DayData> daysMap = {};
 
     for (var line in _data) {
       if (line.length < 14) continue; // Skip malformed lines
@@ -35,10 +35,9 @@ class CsvParser {
       if (line[5].isNotEmpty) {
         // Glucose measurement
         int glucoseValue = int.parse(line[5]);
-        Measurement measurement =
-            Measurement(timestamp: timestamp, glucoseValue: glucoseValue);
+        Measurement measurement = Measurement(timestamp, glucoseValue);
         if (!daysMap.containsKey(dateOnly)) {
-          daysMap[dateOnly] = Day(date: dateOnly);
+          daysMap[dateOnly] = DayData(dateOnly);
         }
         daysMap[dateOnly]?.measurements.add(measurement);
       }
@@ -46,9 +45,9 @@ class CsvParser {
       if (line[13].isNotEmpty) {
         // Note
         String noteText = line[13];
-        Note note = Note(note: noteText, timestamp: timestamp);
+        Note note = Note(timestamp, noteText);
         if (!daysMap.containsKey(dateOnly)) {
-          daysMap[dateOnly] = Day(date: dateOnly);
+          daysMap[dateOnly] = DayData(dateOnly);
         }
         daysMap[dateOnly]?.notes.add(note);
       }
@@ -77,22 +76,30 @@ class Measurement {
   final DateTime timestamp;
   final int glucoseValue;
 
-  Measurement({required this.timestamp, required this.glucoseValue});
+  Measurement(this.timestamp, this.glucoseValue);
 }
 
 class Note {
   final DateTime timestamp;
   final String note;
 
-  Note({required this.note, required this.timestamp});
+  Note(this.timestamp, this.note);
 }
 
-class Day {
+/// Dane dla pojedyczego dnia - z systemu LibreCGM
+class DayData {
   final DateTime date;
-  List<Measurement> measurements;
-  List<Note> notes;
+  List<Measurement> measurements = [];
+  List<Note> notes = [];
 
-  Day({required this.date})
-      : measurements = [],
-        notes = [];
+  DayData(this.date);
+}
+
+/// Dane dla pojedynczego dnia - pochodzące od użytkownika
+class DayUser {
+  final DateTime date;
+  List<String> comments = [];
+  List<Note> notes = [];
+
+  DayUser(this.date);
 }

@@ -5,8 +5,7 @@ import 'dart:html' as html;
 import 'csv_parser.dart';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:intl/intl.dart';
-import 'day_card.dart';
+import 'day_card_builder.dart';
 
 void main() {
   runApp(const MyApp());
