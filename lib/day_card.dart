@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'csv_parser.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
 class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia.
@@ -89,9 +90,23 @@ class DayCardBuilder {
       child: Row(
         children: [
           Container(
-            color: Colors.green[100],
             padding: const EdgeInsets.all(8.0),
-            child: const Text('wykres'),
+            child: SfCartesianChart(
+              primaryXAxis: CategoryAxis(),
+              series: <LineSeries<ChartData, String>>[
+                LineSeries<ChartData, String>(
+                  dataSource: [
+                    ChartData('Jan', 35),
+                    ChartData('Feb', 28),
+                    ChartData('Mar', 34),
+                    ChartData('Apr', 32),
+                    ChartData('May', 40)
+                  ],
+                  xValueMapper: (ChartData data, _) => data.x,
+                  yValueMapper: (ChartData data, _) => data.y,
+                )
+              ],
+            ),
           ),
           Container(
             padding: const EdgeInsets.all(8.0),
@@ -147,4 +162,11 @@ class DayCardBuilder {
       ),
     );
   }
+}
+
+class ChartData {
+  final String x;
+  final double y;
+
+  ChartData(this.x, this.y);
 }
