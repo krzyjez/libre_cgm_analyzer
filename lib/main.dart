@@ -119,7 +119,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemCount: _csvParser.days.length,
                   itemBuilder: (context, index) {
                     final day = _csvParser.days[index];
-                    return DayCardBuilder.buildDayCard(day);
+                    return DayCardBuilder.buildDayCard(day, 140);
                   },
                 ),
         ));

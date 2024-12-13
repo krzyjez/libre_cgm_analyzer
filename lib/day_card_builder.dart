@@ -3,12 +3,13 @@ import 'package:intl/intl.dart';
 import 'csv_parser.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'chart_data.dart';
+import 'model.dart';
 
 class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia.
   ///
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
-  static Widget buildDayCard(DayData day) {
+  static Widget buildDayCard(DayData day, int treshold) {
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
       child: Card(
@@ -23,7 +24,7 @@ class DayCardBuilder {
             // Odstęp między nagłówkiem i obszarem roboczym
             const SizedBox(height: 4.0),
             // Obszar roboczy
-            _buildWorkingArea(day),
+            _buildWorkingArea(day, treshold),
           ],
         ),
       ),
@@ -56,7 +57,7 @@ class DayCardBuilder {
 
   /// Buduje obszar roboczy dla karty dnia.
   /// Zawiera trzy wiersze z tekstem.
-  static Widget _buildWorkingArea(DayData day) {
+  static Widget _buildWorkingArea(DayData day, int treshold) {
     return Padding(
       padding: const EdgeInsets.all(6.0),
       child: Column(
@@ -65,7 +66,7 @@ class DayCardBuilder {
           // Komentarze dzienne
           _buildDailyComments(day),
           // wykres i statystyki
-          _buildChartAndStats(day),
+          _buildChartAndStats(day, treshold),
           // notatki
           _buildNotes(day),
         ],
@@ -83,13 +84,13 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(DayData day) {
+  static Widget _buildChartAndStats(DayData day, int treshold) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.red[100], // Kolor tła dla drugiego kontenera
       child: Row(
         children: [
-          _buildChart(day),
+          _buildChart(day, treshold),
           _buildStats(),
         ],
       ),
@@ -97,7 +98,7 @@ class DayCardBuilder {
   }
 
   /// Buduje wykres na podstawie danych dnia.
-  static Widget _buildChart(DayData day) {
+  static Widget _buildChart(DayData day, int treshold) {
     List<ChartData> chartData = day.measurements.map((measurement) {
       return ChartData(
         DateFormat('HH:mm').format(measurement.timestamp),
@@ -105,10 +106,31 @@ class DayCardBuilder {
       );
     }).toList();
 
+    double minY = chartData.map((data) => data.y).reduce((a, b) => a < b ? a : b);
+    double maxY = chartData.map((data) => data.y).reduce((a, b) => a > b ? a : b);
+
     return Container(
       padding: const EdgeInsets.all(8.0),
       child: SfCartesianChart(
         primaryXAxis: CategoryAxis(),
+        primaryYAxis: NumericAxis(
+          minimum: minY < 80 ? minY : 80,
+          maximum: maxY > 180 ? maxY : 180,
+          plotBands: <PlotBand>[
+            PlotBand(
+              start: 100,
+              end: 100,
+              borderColor: Colors.black,
+              borderWidth: 2,
+            ),
+            PlotBand(
+              start: treshold.toDouble(),
+              end: treshold.toDouble(),
+              borderColor: Colors.red,
+              borderWidth: 2,
+            ),
+          ],
+        ),
         series: <LineSeries<ChartData, String>>[
           LineSeries<ChartData, String>(
             dataSource: chartData,
