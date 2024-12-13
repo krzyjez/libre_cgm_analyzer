@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'csv_parser.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'chart_data.dart';
 import 'model.dart';
@@ -90,8 +89,13 @@ class DayCardBuilder {
       color: Colors.red[100], // Kolor tła dla drugiego kontenera
       child: Row(
         children: [
-          _buildChart(day, treshold),
-          _buildStats(),
+          Expanded(
+            child: _buildChart(day, treshold),
+          ),
+          SizedBox(
+            width: 200,
+            child: _buildStats(),
+          ),
         ],
       ),
     );
@@ -112,6 +116,7 @@ class DayCardBuilder {
     return Container(
       padding: const EdgeInsets.all(8.0),
       child: SfCartesianChart(
+        enableAxisAnimation: false,
         primaryXAxis: CategoryAxis(),
         primaryYAxis: NumericAxis(
           minimum: minY < 80 ? minY : 80,
@@ -131,12 +136,29 @@ class DayCardBuilder {
             ),
           ],
         ),
-        series: <LineSeries<ChartData, String>>[
+        series: <ChartSeries<ChartData, String>>[
           LineSeries<ChartData, String>(
             dataSource: chartData,
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
-          )
+            animationDuration: 0,
+          ),
+          ScatterSeries<ChartData, String>(
+            dataSource: day.notes.map((note) {
+              return ChartData(
+                DateFormat('HH:mm').format(note.timestamp),
+                100, // Set note markers Y value to 100
+              );
+            }).toList(),
+            xValueMapper: (ChartData data, _) => data.x,
+            yValueMapper: (ChartData data, _) => data.y,
+            markerSettings: MarkerSettings(
+              isVisible: true,
+              shape: DataMarkerType.circle,
+              color: Colors.blue,
+            ),
+            animationDuration: 0,
+          ),
         ],
       ),
     );
