@@ -8,6 +8,8 @@ class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia.
   ///
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
+  static const double chartHeight = 300.0;
+
   static Widget buildDayCard(BuildContext context, DayData day, int treshold) {
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
@@ -117,15 +119,16 @@ class DayCardBuilder {
   static Widget _buildChartAndStats(DayData day, int treshold) {
     return Container(
       padding: const EdgeInsets.all(8.0),
-      color: Colors.white, // Kolor tła dla drugiego kontenera
+      color: Colors.white,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start, // Wyrównanie do góry
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: _buildChart(day, treshold),
           ),
           SizedBox(
-            width: 200,
+            width: 220,
+            height: chartHeight,
             child: _buildStats(day),
           ),
         ],
@@ -143,7 +146,7 @@ class DayCardBuilder {
     // Tworzenie wykresu SfCartesianChart z dwoma seriami danych
     return Container(
       padding: const EdgeInsets.all(8.0),
-      height: 300,
+      height: chartHeight,
       child: SfCartesianChart(
         plotAreaBackgroundColor: Colors.white, // Ustawienie białego tła
         primaryXAxis: _buildXAxis(chartData, day.date),
@@ -215,12 +218,10 @@ class DayCardBuilder {
 
   /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
   static Widget _buildStats(DayData day) {
-    // Jeśli nie ma przekroczeń, pokazujemy komunikat
     if (day.periods.isEmpty) {
       return Container(
-        padding: const EdgeInsets.all(8.0),
-        child: const Text('Brak przekroczeń progu'),
-      );
+          padding: const EdgeInsets.all(8.0),
+          child: const Center(child: Icon(Icons.thumb_up, size: 90, color: Colors.green)));
     }
 
     // Lista widgetów z przekroczeniami
@@ -242,7 +243,13 @@ class DayCardBuilder {
       );
     }
 
-    // Zwracamy kontener z listą przekroczeń
+    // Obliczamy sumę punktów
+    int totalPoints = day.periods.fold(0, (sum, period) => sum + period.points);
+
+    // Dodajemy odstęp i podsumowanie
+    periodWidgets.add(const SizedBox(height: 8));
+    periodWidgets.add(Text('Razem punkty: $totalPoints', style: TextStyle(fontWeight: FontWeight.bold)));
+
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.red[50],
