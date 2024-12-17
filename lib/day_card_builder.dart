@@ -119,13 +119,14 @@ class DayCardBuilder {
       padding: const EdgeInsets.all(8.0),
       color: Colors.white, // Kolor tła dla drugiego kontenera
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, // Wyrównanie do góry
         children: [
           Expanded(
             child: _buildChart(day, treshold),
           ),
           SizedBox(
             width: 200,
-            child: _buildStats(),
+            child: _buildStats(day),
           ),
         ],
       ),
@@ -212,11 +213,43 @@ class DayCardBuilder {
     );
   }
 
-  /// Buduje sekcję statystyk.
-  static Widget _buildStats() {
+  /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
+  static Widget _buildStats(DayData day) {
+    // Jeśli nie ma przekroczeń, pokazujemy komunikat
+    if (day.periods.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(8.0),
+        child: const Text('Brak przekroczeń progu'),
+      );
+    }
+
+    // Lista widgetów z przekroczeniami
+    List<Widget> periodWidgets = [];
+
+    // Dodajemy nagłówek
+    periodWidgets.add(Text('Przekroczenia: ${day.periods.length}', style: TextStyle(fontWeight: FontWeight.bold)));
+    // odstęp
+    periodWidgets.add(const SizedBox(height: 8));
+
+    // Dodajemy każde przekroczenie do listy
+    for (int i = 0; i < day.periods.length; i++) {
+      var period = day.periods[i];
+      periodWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: Text('${i + 1}. Przekroczenie ${period.highestMeasure}/${period.points}'),
+        ),
+      );
+    }
+
+    // Zwracamy kontener z listą przekroczeń
     return Container(
       padding: const EdgeInsets.all(8.0),
-      child: const Text('statystyka'),
+      color: Colors.red[50],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: periodWidgets,
+      ),
     );
   }
 
