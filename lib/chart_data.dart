@@ -1,5 +1,7 @@
 class ChartData {
   final DateTime x;
   final double y;
-  ChartData(this.x, this.y);
+  final String? tooltipText;
+  
+  ChartData(this.x, this.y, {this.tooltipText});
 }

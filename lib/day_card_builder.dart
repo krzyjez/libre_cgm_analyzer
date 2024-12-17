@@ -9,6 +9,7 @@ class DayCardBuilder {
   ///
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
   static const double chartHeight = 300.0;
+  static const noteColor = Colors.amber;
 
   static Widget buildDayCard(BuildContext context, DayData day, int treshold) {
     return Padding(
@@ -143,14 +144,17 @@ class DayCardBuilder {
         .map((measurement) => ChartData(measurement.timestamp, measurement.glucoseValue as double))
         .toList();
 
+    final tooltipBehavior = _buildTooltipBehavior(day);
+
     // Tworzenie wykresu SfCartesianChart z dwoma seriami danych
     return Container(
       padding: const EdgeInsets.all(8.0),
       height: chartHeight,
       child: SfCartesianChart(
-        plotAreaBackgroundColor: Colors.white, // Ustawienie białego tła
+        plotAreaBackgroundColor: Colors.white,
         primaryXAxis: _buildXAxis(chartData, day.date),
         primaryYAxis: _buildYAxis(chartData, treshold),
+        tooltipBehavior: tooltipBehavior,
         series: <ChartSeries<ChartData, DateTime>>[
           // Seria liniowa - pokazuje odczyty glukozy w czasie
           LineSeries<ChartData, DateTime>(
@@ -163,14 +167,50 @@ class DayCardBuilder {
           ),
           // Seria punktowa - pokazuje miejsca, gdzie dodano notatki
           ScatterSeries<ChartData, DateTime>(
-            dataSource: day.notes.map((note) => ChartData(note.timestamp, 100)).toList(),
+            dataSource: day.notes.map((note) => ChartData(note.timestamp, 100, tooltipText: "buba")).toList(),
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
-            markerSettings: MarkerSettings(isVisible: true, shape: DataMarkerType.circle, color: Colors.amber),
+            dataLabelMapper: (ChartData data, _) => data.tooltipText,
+            markerSettings: MarkerSettings(
+              isVisible: true,
+              shape: DataMarkerType.circle,
+              color: noteColor,
+              width: 10,
+              height: 10,
+            ),
             animationDuration: 0,
           ),
         ],
       ),
+    );
+  }
+
+  static TooltipBehavior _buildTooltipBehavior(DayData day) {
+    return TooltipBehavior(
+      enable: true,
+      color: Colors.blue[700],
+      builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
+        if (seriesIndex == 1) {
+          // gdy seria odnosi się do notatki
+          return Container(
+            padding: const EdgeInsets.all(5),
+            child: Text(
+              "${DateFormat('HH:mm').format(day.notes[pointIndex].timestamp)} ${day.notes[pointIndex].note}",
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        } else {
+          // seria z pomiarami glukozy
+          final chartData = data as ChartData;
+          return Container(
+            padding: const EdgeInsets.all(5),
+            child: Text(
+              "${DateFormat('HH:mm').format(chartData.x)} ${chartData.y.toStringAsFixed(1)} mg/dL",
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -228,7 +268,8 @@ class DayCardBuilder {
     List<Widget> periodWidgets = [];
 
     // Dodajemy nagłówek
-    periodWidgets.add(Text('Przekroczenia: ${day.periods.length}', style: TextStyle(fontWeight: FontWeight.bold)));
+    periodWidgets
+        .add(Text('Przekroczenia: ${day.periods.length}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)));
     // odstęp
     periodWidgets.add(const SizedBox(height: 8));
 
