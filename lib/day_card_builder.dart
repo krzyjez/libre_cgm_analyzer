@@ -117,7 +117,7 @@ class DayCardBuilder {
   static Widget _buildChartAndStats(DayData day, int treshold) {
     return Container(
       padding: const EdgeInsets.all(8.0),
-      color: Colors.red[100], // Kolor tła dla drugiego kontenera
+      color: Colors.white, // Kolor tła dla drugiego kontenera
       child: Row(
         children: [
           Expanded(
@@ -132,27 +132,6 @@ class DayCardBuilder {
     );
   }
 
-  /// Oblicza zakres osi Y na podstawie danych i domyślnego zakresu 80-180
-  static (double, double) _calculateYAxisRange(List<ChartData> chartData) {
-    double minY = chartData.map((data) => data.y).reduce((a, b) => a < b ? a : b);
-    double maxY = chartData.map((data) => data.y).reduce((a, b) => a > b ? a : b);
-
-    // Używamy 80 i 180 jako minimalne zakresy
-    return (minY < 80 ? minY : 80, maxY > 180 ? maxY : 180);
-  }
-
-  /// Oblicza zakres osi X na podstawie danych i domyślnego zakresu
-  static (DateTime, DateTime) _calculateXAxisRange(List<ChartData> chartData, DateTime date) {
-    DateTime minX = chartData.map((data) => data.x).reduce((a, b) => a.isBefore(b) ? a : b);
-    DateTime maxX = chartData.map((data) => data.x).reduce((a, b) => a.isAfter(b) ? a : b);
-
-    // Domyślny zakres (7:00 - 24:00)
-    DateTime defaultMinX = DateTime(date.year, date.month, date.day, 7, 0);
-    DateTime defaultMaxX = DateTime(date.year, date.month, date.day, 23, 59);
-
-    return (minX.isBefore(defaultMinX) ? minX : defaultMinX, maxX.isAfter(defaultMaxX) ? maxX : defaultMaxX);
-  }
-
   /// Buduje wykres na podstawie danych dnia.
   static Widget _buildChart(DayData day, int treshold) {
     // Przygotowanie danych do wykresu
@@ -160,42 +139,22 @@ class DayCardBuilder {
         .map((measurement) => ChartData(measurement.timestamp, measurement.glucoseValue as double))
         .toList();
 
-    // Obliczenie zakresów osi
-    final (minX, maxX) = _calculateXAxisRange(chartData, day.date);
-    final (minY, maxY) = _calculateYAxisRange(chartData);
-
-    // Tworzenie wykresu SfCartesianChart z dwoma seriami danych:
-    // 1. LineSeries - główna linia wykresu z odczytami glukozy
-    // 2. ScatterSeries - punkty oznaczające notatki (zawsze na poziomie y=100)
+    // Tworzenie wykresu SfCartesianChart z dwoma seriami danych
     return Container(
       padding: const EdgeInsets.all(8.0),
       height: 300,
       child: SfCartesianChart(
-        // Konfiguracja osi X (czasu)
-        primaryXAxis: DateTimeAxis(
-          minimum: minX,
-          maximum: maxX,
-          intervalType: DateTimeIntervalType.hours,
-          interval: 3,
-        ),
-        // Konfiguracja osi Y (poziomu glukozy)
-        primaryYAxis: NumericAxis(
-          minimum: minY,
-          maximum: maxY,
-          // Dodanie linii referencyjnych:
-          // - czarna linia na poziomie 100 (wartość referencyjna)
-          // - czerwona linia na poziomie treshold (próg alarmowy)
-          plotBands: <PlotBand>[
-            PlotBand(start: 100, end: 100, borderColor: Colors.black, borderWidth: 2),
-            PlotBand(start: treshold.toDouble(), end: treshold.toDouble(), borderColor: Colors.red, borderWidth: 2),
-          ],
-        ),
+        plotAreaBackgroundColor: Colors.white, // Ustawienie białego tła
+        primaryXAxis: _buildXAxis(chartData, day.date),
+        primaryYAxis: _buildYAxis(chartData, treshold),
         series: <ChartSeries<ChartData, DateTime>>[
           // Seria liniowa - pokazuje odczyty glukozy w czasie
           LineSeries<ChartData, DateTime>(
             dataSource: chartData,
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
+            markerSettings:
+                MarkerSettings(isVisible: true, shape: DataMarkerType.circle, color: Colors.blue, height: 4, width: 4),
             animationDuration: 0,
           ),
           // Seria punktowa - pokazuje miejsca, gdzie dodano notatki
@@ -208,6 +167,48 @@ class DayCardBuilder {
           ),
         ],
       ),
+    );
+  }
+
+  /// Konfiguracja osi X (czasu)
+  static DateTimeAxis _buildXAxis(List<ChartData> chartData, DateTime date) {
+    // Obliczenie zakresu osi X
+    DateTime minX = chartData.map((data) => data.x).reduce((a, b) => a.isBefore(b) ? a : b);
+    DateTime maxX = chartData.map((data) => data.x).reduce((a, b) => a.isAfter(b) ? a : b);
+
+    // Domyślny zakres (7:00 - 24:00)
+    DateTime defaultMinX = DateTime(date.year, date.month, date.day, 7, 0);
+    DateTime defaultMaxX = DateTime(date.year, date.month, date.day, 23, 59);
+
+    minX = minX.isBefore(defaultMinX) ? minX : defaultMinX;
+    maxX = maxX.isAfter(defaultMaxX) ? maxX : defaultMaxX;
+
+    return DateTimeAxis(
+      minimum: minX,
+      maximum: maxX,
+      intervalType: DateTimeIntervalType.hours,
+      interval: 1,
+      dateFormat: DateFormat('HH'),
+    );
+  }
+
+  /// Konfiguracja osi Y (poziomu glukozy)
+  static NumericAxis _buildYAxis(List<ChartData> chartData, int treshold) {
+    // Obliczenie zakresu osi Y
+    double minY = chartData.map((data) => data.y).reduce((a, b) => a < b ? a : b);
+    double maxY = chartData.map((data) => data.y).reduce((a, b) => a > b ? a : b);
+
+    // Używamy 80 i 180 jako minimalne zakresy
+    minY = minY < 80 ? minY : 80;
+    maxY = maxY > 180 ? maxY : 180;
+
+    return NumericAxis(
+      minimum: minY,
+      maximum: maxY,
+      plotBands: <PlotBand>[
+        PlotBand(start: 100, end: 100, borderColor: Colors.black, borderWidth: 2),
+        PlotBand(start: treshold.toDouble(), end: treshold.toDouble(), borderColor: Colors.red, borderWidth: 2),
+      ],
     );
   }
 

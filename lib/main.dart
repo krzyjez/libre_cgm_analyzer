@@ -35,6 +35,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  int _treshold = 140;
   String? _fileName;
   final CsvParser _csvParser = CsvParser();
 
@@ -54,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
           // Bezpieczne aktualizowanie stanu
           setState(() {
             _fileName = file.name;
-            _csvParser.parseCsv(reader.result as String);
+            _csvParser.parseCsv(reader.result as String, _treshold);
           });
 
           // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
@@ -88,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final String response = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
     setState(() {
       _fileName = 'Dane debugowe';
-      _csvParser.parseCsv(response);
+      _csvParser.parseCsv(response, _treshold);
     });
     print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
   }
