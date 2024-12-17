@@ -10,6 +10,7 @@ class DayCardBuilder {
   /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
   static const double chartHeight = 300.0;
   static const noteColor = Colors.amber;
+  static const glucoseColor = Colors.blue;
 
   static Widget buildDayCard(BuildContext context, DayData day, int treshold) {
     return Padding(
@@ -185,31 +186,39 @@ class DayCardBuilder {
     );
   }
 
+  /// Buduje zachowanie tooltipa dla wykresu.
+  ///
+  /// Metoda tworzy tooltipa, który wyświetla różne informacje w zależności od serii danych:
+  /// - dla notatek (seriesIndex == 1) wyświetla czas i treść notatki na żółtym tle
+  /// - dla pomiarów glukozy (seriesIndex == 0) wyświetla czas i wartość pomiaru na niebieskim tle
   static TooltipBehavior _buildTooltipBehavior(DayData day) {
     return TooltipBehavior(
       enable: true,
-      color: Colors.blue[700],
+      color: Colors.white, // daje biały kolor gdyż gdy później przychodzi kontener z decoration
+      //i właściwym kolorem to widać minimalną czarną ramkę, która jest nierwówna
+
+      /// Builder jest wywoływany za każdym razem, gdy ma być wyświetlony tooltip.
+      /// Parametry:
+      /// - data: dane punktu (ChartData dla pomiarów glukozy)
+      /// - point: fizyczne współrzędne punktu na wykresie (x,y)
+      /// - series: cała seria danych do której należy punkt
+      /// - pointIndex: indeks punktu w danej serii (np. która to notatka)
+      /// - seriesIndex: numer serii (0: pomiary glukozy, 1: notatki)
       builder: (dynamic data, dynamic point, dynamic series, int pointIndex, int seriesIndex) {
-        if (seriesIndex == 1) {
-          // gdy seria odnosi się do notatki
-          return Container(
-            padding: const EdgeInsets.all(5),
-            child: Text(
-              "${DateFormat('HH:mm').format(day.notes[pointIndex].timestamp)} ${day.notes[pointIndex].note}",
-              style: const TextStyle(color: Colors.white),
-            ),
-          );
-        } else {
-          // seria z pomiarami glukozy
-          final chartData = data as ChartData;
-          return Container(
-            padding: const EdgeInsets.all(5),
-            child: Text(
-              "${DateFormat('HH:mm').format(chartData.x)} ${chartData.y.toStringAsFixed(1)} mg/dL",
-              style: const TextStyle(color: Colors.white),
-            ),
-          );
-        }
+        // Wybór koloru tła w zależności od typu serii
+        final color = seriesIndex == 1 ? noteColor : glucoseColor;
+
+        // Formatowanie tekstu w zależności od typu serii
+        final text = seriesIndex == 1
+            ? "${DateFormat('HH:mm').format(day.notes[pointIndex].timestamp)} ${day.notes[pointIndex].note}" // format dla notatek
+            : "${DateFormat('HH:mm').format((data as ChartData).x)} ${data.y.toStringAsFixed(1)} mg/dL"; // format dla pomiarów
+
+        // Zwracamy kontener z odpowiednim kolorem tła i sformatowanym tekstem
+        return Container(
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(color: color),
+          child: Text(text, style: TextStyle(color: seriesIndex == 1 ? Colors.black : Colors.white)),
+        );
       },
     );
   }
