@@ -110,6 +110,19 @@ class DayCardBuilder {
       );
     }).toList();
 
+    // Znajdujemy minimalny i maksymalny czas
+    DateTime minX = chartData.map((data) => data.x).reduce((a, b) => a.isBefore(b) ? a : b);
+    DateTime maxX = chartData.map((data) => data.x).reduce((a, b) => a.isAfter(b) ? a : b);
+
+    // Ustawiamy domyślny zakres (7:00 - 24:00)
+    DateTime defaultMinX = DateTime(day.date.year, day.date.month, day.date.day, 7, 0);
+    DateTime defaultMaxX = DateTime(day.date.year, day.date.month, day.date.day, 23, 59);
+
+    // Używamy wcześniejszego czasu jeśli dane wykraczają poza 7:00
+    DateTime visibleMinX = minX.isBefore(defaultMinX) ? minX : defaultMinX;
+    // Używamy późniejszego czasu jeśli dane wykraczają poza 24:00
+    DateTime visibleMaxX = maxX.isAfter(defaultMaxX) ? maxX : defaultMaxX;
+
     double minY = chartData.map((data) => data.y).reduce((a, b) => a < b ? a : b);
     double maxY = chartData.map((data) => data.y).reduce((a, b) => a > b ? a : b);
 
@@ -121,8 +134,8 @@ class DayCardBuilder {
           intervalType: DateTimeIntervalType.hours,
           dateFormat: DateFormat('HH'),
           majorGridLines: const MajorGridLines(width: 0),
-          visibleMinimum: DateTime(day.date.year, day.date.month, day.date.day, 0, 0),
-          visibleMaximum: DateTime(day.date.year, day.date.month, day.date.day, 23, 59),
+          visibleMinimum: visibleMinX,
+          visibleMaximum: visibleMaxX,
         ),
         primaryYAxis: NumericAxis(
           minimum: minY < 80 ? minY : 80,
