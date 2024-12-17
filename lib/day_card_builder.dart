@@ -105,7 +105,7 @@ class DayCardBuilder {
   static Widget _buildChart(DayData day, int treshold) {
     List<ChartData> chartData = day.measurements.map((measurement) {
       return ChartData(
-        DateFormat('HH:mm').format(measurement.timestamp),
+        measurement.timestamp,
         measurement.glucoseValue as double,
       );
     }).toList();
@@ -117,7 +117,13 @@ class DayCardBuilder {
       padding: const EdgeInsets.all(8.0),
       child: SfCartesianChart(
         enableAxisAnimation: false,
-        primaryXAxis: CategoryAxis(),
+        primaryXAxis: DateTimeAxis(
+          intervalType: DateTimeIntervalType.hours,
+          dateFormat: DateFormat('HH'),
+          majorGridLines: const MajorGridLines(width: 0),
+          visibleMinimum: DateTime(day.date.year, day.date.month, day.date.day, 0, 0),
+          visibleMaximum: DateTime(day.date.year, day.date.month, day.date.day, 23, 59),
+        ),
         primaryYAxis: NumericAxis(
           minimum: minY < 80 ? minY : 80,
           maximum: maxY > 180 ? maxY : 180,
@@ -136,17 +142,17 @@ class DayCardBuilder {
             ),
           ],
         ),
-        series: <ChartSeries<ChartData, String>>[
-          LineSeries<ChartData, String>(
+        series: <ChartSeries<ChartData, DateTime>>[
+          LineSeries<ChartData, DateTime>(
             dataSource: chartData,
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
             animationDuration: 0,
           ),
-          ScatterSeries<ChartData, String>(
+          ScatterSeries<ChartData, DateTime>(
             dataSource: day.notes.map((note) {
               return ChartData(
-                DateFormat('HH:mm').format(note.timestamp),
+                note.timestamp,
                 100, // Set note markers Y value to 100
               );
             }).toList(),
