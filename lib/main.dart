@@ -95,6 +95,12 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadDebugData();  // Automatycznie ładujemy dane przy starcie
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
@@ -105,11 +111,6 @@ class _MyHomePageState extends State<MyHomePage> {
               icon: const Icon(Icons.file_upload),
               tooltip: 'Dodaj plik CSV',
               onPressed: () => pickCsvFile(context),
-            ),
-            IconButton(
-              icon: const Icon(Icons.bug_report),
-              tooltip: 'Preload Debug Data',
-              onPressed: _loadDebugData,
             ),
           ],
         ),

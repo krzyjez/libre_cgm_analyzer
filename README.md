@@ -1,16 +1,40 @@
-# libre_cgm_analyzer
+# Libre CGM Analyzer
 
-A new Flutter project.
+Aplikacja do analizy danych z systemu Libre Continuous Glucose Monitoring.
 
-## Getting Started
+## Struktura projektu
 
-This project is a starting point for a Flutter application.
+```
+libre_cgm_analyzer/
+├── backend/              # Serwer Node.js
+│   ├── server.js        # Główny plik serwera
+│   └── start.js         # Skrypt startowy (serwer + flutter)
+├── data_source/         # Źródłowe pliki CSV
+├── lib/                 # Kod źródłowy Flutter
+└── doc/                 # Dokumentacja
+    └── preparations.md  # Instrukcje konfiguracji
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Technologie
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- **Backend**: Node.js + Express.js
+- **Frontend**: Flutter Web
+- **Dane**: Format CSV
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Uruchomienie
+
+Szczegółowe instrukcje znajdują się w [doc/preparations.md](doc/preparations.md)
+
+## Funkcje
+
+- Wyświetlanie danych pomiarowych z pliku CSV
+- Analiza trendów glukozy
+- Wizualizacja danych na wykresach
+
+## Rozwój
+
+1. Sklonuj repozytorium
+2. Zainstaluj zależności (backend + frontend)
+3. Uruchom w trybie deweloperskim
+
+Szczegółowe instrukcje w [doc/preparations.md](doc/preparations.md)

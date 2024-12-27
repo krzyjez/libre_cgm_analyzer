@@ -201,7 +201,7 @@ class CsvParser {
     for (var i = 0; i < measurements.length - 1; i++) {
       var start = measurements[i];
       var end = measurements[i + 1];
-      
+
       // Oblicz różnicę czasu w minutach
       var minutesDiff = end.timestamp.difference(start.timestamp).inMinutes;
       if (minutesDiff <= 0) continue;
@@ -213,7 +213,7 @@ class CsvParser {
       for (var minute = 0; minute < minutesDiff; minute++) {
         // Interpoluj wartość glukozy dla danej minuty
         var interpolatedGlucose = start.glucoseValue + (glucoseChange * minute);
-        
+
         // Jeśli wartość przekracza threshold, dodaj różnicę do sumy
         if (interpolatedGlucose > glucoseThreshold) {
           totalPoints += (interpolatedGlucose - glucoseThreshold).round();
