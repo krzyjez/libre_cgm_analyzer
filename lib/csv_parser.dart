@@ -1,7 +1,7 @@
 // Klasa parsuje plik CSV i tworzy obiekty Measurement i Note
 // CSV zaweira trzy rodzaje wierszy które nas interesują:
 // 1. wiersz z wartością glukozy typu 1 - to przykładowy wers:
-// FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,10-12-2024 17:22,1,,104,,,,,,,,,,,,,
+// FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,10-12-2024 17:22,1,,104,,,,,,,,,,,,,,
 // Glucose value is at index 5
 // 2. oraz drugi wiersz z wartością glukozy typu 0 - to przykładowy wiersz:
 // FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,11-12-2024 16:05,0,123,,,,,,,,,,,,,,
@@ -13,6 +13,7 @@
 import 'package:intl/intl.dart';
 import 'model.dart';
 import 'logger.dart';
+import 'glucose_calculator.dart';
 
 class CsvParser {
   final _logger = Logger('CsvParser');
@@ -138,47 +139,70 @@ class CsvParser {
     DateTime? periodStartTime;
     int highestMeasure = 0;
     List<Measurement> periodMeasurements = [];
+    bool wasAboveThreshold = false;
 
     // Sort measurements by timestamp
     measurements.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     for (var i = 0; i < measurements.length; i++) {
       var measurement = measurements[i];
+      bool isAboveThreshold = measurement.glucoseValue > glucoseThreshold;
 
-      if (measurement.glucoseValue > glucoseThreshold) {
-        // Rozpocznij nowy okres lub kontynuuj istniejący
-        periodStartTime ??= measurement.timestamp;
+      // Jeśli przekraczamy próg, a poprzednio byliśmy poniżej
+      if (isAboveThreshold && !wasAboveThreshold && i > 0) {
+        // Dodaj poprzedni pomiar (poniżej progu) do okresu
+        periodStartTime = measurements[i - 1].timestamp;
+        periodMeasurements.add(measurements[i - 1]);
         periodMeasurements.add(measurement);
-        // Aktualizuj najwyższy pomiar w okresie
+        highestMeasure = measurement.glucoseValue;
+      }
+      // Jeśli kontynuujemy okres powyżej progu
+      else if (isAboveThreshold && wasAboveThreshold) {
+        periodMeasurements.add(measurement);
         if (measurement.glucoseValue > highestMeasure) {
-          highestMeasure = measurement.glucoseValue.toInt();
+          highestMeasure = measurement.glucoseValue;
         }
-      } else if (periodStartTime != null) {
-        // Zakończ bieżący okres wysokiego poziomu glukozy
+      }
+      // Jeśli schodzimy poniżej progu, a poprzednio byliśmy powyżej
+      else if (!isAboveThreshold && wasAboveThreshold && periodStartTime != null) {
+        // Dodaj aktualny pomiar (poniżej progu) do okresu
+        periodMeasurements.add(measurement);
+
         var periodEndTime = measurement.timestamp;
         int points = calculatePoints(periodMeasurements, glucoseThreshold);
-        highPeriods.add(Period(
+        var period = Period(
           startTime: periodStartTime,
           endTime: periodEndTime,
           points: points,
           highestMeasure: highestMeasure,
-        ));
+        );
+        period.periodMeasurements.addAll(periodMeasurements);
+        highPeriods.add(period);
+
         // Reset zmiennych na potrzeby następnego okresu
         periodStartTime = null;
-        periodMeasurements.clear();
+        periodMeasurements = [];
         highestMeasure = 0;
       }
+
+      wasAboveThreshold = isAboveThreshold;
     }
 
     // Obsłuż przypadek, gdy okres wysokiego poziomu kończy się ostatnim pomiarem dnia
-    if (periodStartTime != null) {
+    if (periodStartTime != null && periodMeasurements.isNotEmpty && wasAboveThreshold) {
+      // Dodajemy sztuczny punkt końcowy na tym samym poziomie co ostatni pomiar
+      var lastMeasurement = measurements.last;
+      periodMeasurements.add(lastMeasurement);
+
       int points = calculatePoints(periodMeasurements, glucoseThreshold);
-      highPeriods.add(Period(
+      var period = Period(
         startTime: periodStartTime,
-        endTime: measurements.last.timestamp,
+        endTime: lastMeasurement.timestamp,
         points: points,
         highestMeasure: highestMeasure,
-      ));
+      );
+      period.periodMeasurements.addAll(periodMeasurements);
+      highPeriods.add(period);
     }
 
     return highPeriods;
@@ -186,44 +210,16 @@ class CsvParser {
 
   /// Oblicza punkty dla okresu wysokiego poziomu glukozy.
   ///
-  /// Punkty są obliczane jako suma pól powierzchni nad linią threshold.
-  /// Dla każdej minuty między pomiarami:
-  /// 1. Interpoluje wartość glukozy
-  /// 2. Jeśli wartość > threshold, dodaje (wartość - threshold) do sumy
-  ///
   /// Parametry:
   /// - `measurements`: Lista pomiarów w danym okresie
   /// - `glucoseThreshold`: Próg, powyżej którego glukoza jest uznawana za wysoką
   ///
   /// Zwraca:
-  /// Liczbę punktów reprezentującą pole powierzchni nad linią threshold
+  /// Liczbę punktów reprezentującą ważone pole powierzchni nad linią threshold
   int calculatePoints(List<Measurement> measurements, int glucoseThreshold) {
     if (measurements.length < 2) return 0;
-    int totalPoints = 0;
 
-    for (var i = 0; i < measurements.length - 1; i++) {
-      var start = measurements[i];
-      var end = measurements[i + 1];
-
-      // Oblicz różnicę czasu w minutach
-      var minutesDiff = end.timestamp.difference(start.timestamp).inMinutes;
-      if (minutesDiff <= 0) continue;
-
-      // Oblicz współczynnik zmiany glukozy na minutę
-      var glucoseChange = (end.glucoseValue - start.glucoseValue) / minutesDiff;
-
-      // Dla każdej minuty w przedziale
-      for (var minute = 0; minute < minutesDiff; minute++) {
-        // Interpoluj wartość glukozy dla danej minuty
-        var interpolatedGlucose = start.glucoseValue + (glucoseChange * minute);
-
-        // Jeśli wartość przekracza threshold, dodaj różnicę do sumy
-        if (interpolatedGlucose > glucoseThreshold) {
-          totalPoints += (interpolatedGlucose - glucoseThreshold).round();
-        }
-      }
-    }
-
-    return totalPoints;
+    double points = GlucoseAreaCalculator.calculateAreaAboveThreshold(measurements, glucoseThreshold);
+    return points.round();
   }
 }

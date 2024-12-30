@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'day_card_builder.dart';
 import 'api_service.dart';
 import 'logger.dart';
+import 'version.dart';
 
 void main() {
   runApp(const MyApp());
@@ -116,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
         appBar: AppBar(
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: const Text('Libre CGM Analyzer 4'),
+          title: Text('Libre CGM Analyzer v$appVersion'),
           actions: [
             IconButton(
               icon: const Icon(Icons.file_upload),

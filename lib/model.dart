@@ -66,11 +66,7 @@ class Period {
   final DateTime endTime;
   final int points;
   final int highestMeasure;
+  final List<Measurement> periodMeasurements = [];
 
-  Period({
-    required this.startTime, 
-    required this.endTime, 
-    required this.points, 
-    required this.highestMeasure
-  });
+  Period({required this.startTime, required this.endTime, required this.points, required this.highestMeasure});
 }
