@@ -1,11 +1,13 @@
 // ignore_for_file: avoid_print
 
 import 'package:flutter/material.dart';
-import 'dart:html' as html;
+import 'package:file_picker/file_picker.dart';
 import 'csv_parser.dart';
 import 'dart:async';
 import 'package:flutter/services.dart' show rootBundle;
 import 'day_card_builder.dart';
+import 'api_service.dart';
+import 'logger.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,69 +37,78 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _treshold = 140;
+  final int _treshold = 140;
   String? _fileName;
   final CsvParser _csvParser = CsvParser();
+  final ApiService _apiService = ApiService(baseUrl: 'http://localhost:8000');
+  final _logger = Logger('MyHomePage');
 
   Future<void> pickCsvFile(BuildContext context) async {
-    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement()..accept = '.csv';
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
 
-    // Otwórz okno wyboru pliku
-    uploadInput.click();
-
-    uploadInput.onChange.listen((e) {
-      final files = uploadInput.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files.first;
-        final reader = html.FileReader();
-
-        reader.onLoad.listen((e) {
-          // Bezpieczne aktualizowanie stanu
+      if (result != null) {
+        final fileBytes = result.files.first.bytes;
+        if (fileBytes != null) {
+          final csvContent = String.fromCharCodes(fileBytes);
           setState(() {
-            _fileName = file.name;
-            _csvParser.parseCsv(reader.result as String, _treshold);
+            _fileName = result.files.first.name;
+            _csvParser.parseCsv(csvContent, _treshold);
           });
 
           // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
           if (!context.mounted) return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Wczytano plik: ${file.name}')),
+            SnackBar(content: Text('Wczytano plik: ${result.files.first.name}')),
           );
-        });
-
-        reader.onError.listen((error) {
-          if (!context.mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Błąd podczas wczytywania pliku')),
-          );
-        });
-
-        reader.readAsText(file);
-      } else {
-        if (!context.mounted) return;
-
+        }
+      }
+    } catch (e) {
+      _logger.error('Błąd podczas wybierania pliku: $e');
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nie wybrano pliku')),
+          SnackBar(content: Text('Błąd podczas wczytywania pliku: $e')),
         );
       }
-    });
+    }
   }
 
   Future<void> _loadDebugData() async {
-    final String response = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
-    setState(() {
-      _fileName = 'Dane debugowe';
-      _csvParser.parseCsv(response, _treshold);
-    });
-    print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
+    try {
+      final String response = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
+      setState(() {
+        _fileName = 'Dane debugowe';
+        _csvParser.parseCsv(response, _treshold);
+      });
+      print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
+    } catch (e) {
+      _logger.error('Błąd podczas wczytywania danych debugowych: $e');
+    }
+  }
+
+  Future<void> _loadDataFromApi() async {
+    try {
+      final csvData = await _apiService.fetchGlucoseData();
+      _csvParser.parseCsv(csvData, _treshold);
+      setState(() {
+        _fileName = 'Dane z serwera';
+      });
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania danych z API: $e');
+      // W przypadku błędu, wczytaj dane debugowe
+      print('Błąd pobierania danych z API: $e');
+      _loadDebugData();
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    _loadDebugData();  // Automatycznie ładujemy dane przy starcie
+    _loadDataFromApi(); // Próbujemy najpierw pobrać z API
   }
 
   @override

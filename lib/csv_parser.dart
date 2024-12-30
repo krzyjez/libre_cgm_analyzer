@@ -12,8 +12,11 @@
 // Note is at index 13
 import 'package:intl/intl.dart';
 import 'model.dart';
+import 'logger.dart';
 
 class CsvParser {
+  final _logger = Logger('CsvParser');
+
   // private fields
   List<List<String>> _data = []; // Surowe dane z pliku CSV
   List<DayData> _days = []; // Przetworzone dane pogrupowane po dniach
@@ -74,7 +77,7 @@ class CsvParser {
     }
 
     // wypisujemy liczbe dni
-    print('Parsed ${_days.length} days');
+    _logger.info('Parsed ${_days.length} days');
   }
 
   /// Parsuje datę w formacie dd-MM-yyyy HH:mm.
@@ -89,7 +92,7 @@ class CsvParser {
       final dateTime = DateFormat('dd-MM-yyyy HH:mm').parse(dateTimeString);
       return dateTime;
     } catch (e) {
-      print('Invalid date format: $dateTimeString');
+      _logger.error('Invalid date format: $dateTimeString');
       return null;
     }
   }
