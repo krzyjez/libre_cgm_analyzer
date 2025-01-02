@@ -11,6 +11,7 @@
 // FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,10-12-2022 14:12,6,,,,,,,,,,Kasza bulgur,,,,,
 // Note is at index 13
 import 'package:intl/intl.dart';
+import 'dart:convert';
 import 'model.dart';
 import 'logger.dart';
 import 'glucose_calculator.dart';
@@ -35,7 +36,9 @@ class CsvParser {
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   void parseCsv(String csvContent, int glucoseThreshold) {
-    _data = csvContent.split('\n').map((line) => line.split(',')).toList();
+    // Dekodujemy zawartość CSV z UTF-8
+    final decodedContent = utf8.decode(csvContent.codeUnits, allowMalformed: true);
+    _data = decodedContent.split('\n').map((line) => line.split(',')).toList();
 
     // Przetwarzanie wierszy CSV
     Map<DateTime, DayData> daysMap = {};

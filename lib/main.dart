@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'csv_parser.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import 'day_card_builder.dart';
 import 'api_service.dart';
@@ -54,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (result != null) {
         final fileBytes = result.files.first.bytes;
         if (fileBytes != null) {
-          final csvContent = String.fromCharCodes(fileBytes);
+          final csvContent = utf8.decode(fileBytes);
           setState(() {
             _fileName = result.files.first.name;
             _csvParser.parseCsv(csvContent, _treshold);
@@ -80,7 +81,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadDebugData() async {
     try {
-      final String response = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
+      final bytes = await rootBundle.load('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
+      final String response = utf8.decode(bytes.buffer.asUint8List());
       setState(() {
         _fileName = 'Dane debugowe';
         _csvParser.parseCsv(response, _treshold);
