@@ -47,10 +47,13 @@ class CsvParser {
       if (line.length < 12) continue; // Skip malformed lines
 
       var timestamp = _parseDate(line[2]);
-
       if (timestamp == null) continue;
 
-      var dateOnly = DateTime(timestamp.year, timestamp.month, timestamp.day);
+      // Dla celów grupowania określamy do którego dnia należy pomiar
+      final displayDate = timestamp.hour < 4 
+          ? timestamp.subtract(const Duration(days: 1)) 
+          : timestamp;
+      final dateOnly = DateTime(displayDate.year, displayDate.month, displayDate.day);
 
       var measurement = _tryParseMeasurement(line);
       if (measurement != null) {
@@ -110,24 +113,28 @@ class CsvParser {
   /// - Measurement jeśli wiersz zawiera poprawny pomiar
   /// - null jeśli wiersz nie jest pomiarem lub jest niepoprawny
   Measurement? _tryParseMeasurement(List<String> line) {
-    if (line.length < 6) return null;
+    try {
+      var timestamp = _parseDate(line[2]);
+      if (timestamp == null) return null;
 
-    var timestamp = _parseDate(line[2]);
-    if (timestamp == null) return null;
+      var type = int.tryParse(line[3]);
+      if (type == null) return null;
 
-    var type = int.tryParse(line[3]);
-    if (type == null || (type != 0 && type != 1)) return null;
+      int? glucoseValue;
+      if (type == 0) {
+        glucoseValue = int.tryParse(line[4]);
+      } else if (type == 1) {
+        glucoseValue = int.tryParse(line[5]);
+      }
 
-    // Wybierz odpowiedni indeks w zależności od typu pomiaru
-    var glucoseIndex = type == 0 ? 4 : 5;
+      if (glucoseValue == null) return null;
 
-    var glucoseStr = line[glucoseIndex];
-    if (glucoseStr.isEmpty) return null;
-
-    var glucose = int.tryParse(glucoseStr);
-    if (glucose == null) return null;
-
-    return Measurement(timestamp, glucose);
+      // Używamy oryginalnego timestamp'a
+      return Measurement(timestamp, glucoseValue);
+    } catch (e) {
+      _logger.error('Błąd podczas parsowania pomiaru: $e');
+      return null;
+    }
   }
 
   /// Analizuje okresy wysokiego poziomu glukozy i oblicza ich nasilenie.
