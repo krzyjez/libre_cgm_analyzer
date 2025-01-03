@@ -40,6 +40,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  static const defaultTreshold = 140;
   String? _fileName;
   UserInfo? _userInfo;
   final CsvParser _csvParser = CsvParser();
@@ -59,7 +60,7 @@ class _MyHomePageState extends State<MyHomePage> {
           final csvContent = utf8.decode(fileBytes);
           setState(() {
             _fileName = result.files.first.name;
-            _csvParser.parseCsv(csvContent, 140);
+            _csvParser.parseCsv(csvContent, defaultTreshold);
           });
 
           // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
@@ -86,7 +87,7 @@ class _MyHomePageState extends State<MyHomePage> {
       final String response = utf8.decode(bytes.buffer.asUint8List());
       setState(() {
         _fileName = 'Dane debugowe';
-        _csvParser.parseCsv(response, 140);
+        _csvParser.parseCsv(response, defaultTreshold);
       });
       print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
     } catch (e) {
@@ -101,10 +102,10 @@ class _MyHomePageState extends State<MyHomePage> {
         _apiService.fetchGlucoseData(),
         _apiService.fetchUserData(),
       ]);
-      
+
       final csvData = results[0] as String;
       final userData = results[1] as UserInfo;
-      
+
       setState(() {
         _fileName = 'Dane z serwera';
         _userInfo = userData;
@@ -145,13 +146,29 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemCount: _csvParser.days.length,
                   itemBuilder: (context, index) {
                     final day = _csvParser.days[index];
+                    // Znajdź DayUser dla danej daty
+                    final dayUser = _findUserDayByDate(day.date);
+
                     return DayCardBuilder.buildDayCard(
-                      context, 
-                      day, 
-                      _userInfo?.treshold ?? 140
+                      context,
+                      day,
+                      _userInfo?.treshold ?? defaultTreshold,
+                      dayUser,
                     );
                   },
                 ),
         ));
+  }
+
+  DayUser? _findUserDayByDate(DateTime date) {
+    if (_userInfo == null) return null;
+
+    for (var dayUser in _userInfo!.days) {
+      if (dayUser.date.year == date.year && dayUser.date.month == date.month && dayUser.date.day == date.day) {
+        return dayUser;
+      }
+    }
+
+    return null;
   }
 }

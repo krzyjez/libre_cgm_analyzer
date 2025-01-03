@@ -12,7 +12,7 @@ class DayCardBuilder {
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
 
-  static Widget buildDayCard(BuildContext context, DayData day, int treshold) {
+  static Widget buildDayCard(BuildContext context, DayData dayData, int treshold, DayUser? dayUser) {
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
       child: Card(
@@ -23,11 +23,11 @@ class DayCardBuilder {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Nagłówek
-            _buildHeader(context, day),
+            _buildHeader(context, dayData, dayUser),
             // Odstęp między nagłówkiem i obszarem roboczym
             const SizedBox(height: 4.0),
             // Obszar roboczy
-            _buildWorkingArea(context, day, treshold),
+            _buildWorkingArea(context, dayData, treshold),
           ],
         ),
       ),
@@ -37,7 +37,9 @@ class DayCardBuilder {
   /// Buduje nagłówek dla karty dnia.
   ///
   /// Zawiera datę z zaokrąglonymi rogami i ciemnozielonym tłem.
-  static Widget _buildHeader(BuildContext context, DayData day) {
+  static Widget _buildHeader(BuildContext context, DayData dayData, DayUser? dayUser) {
+    final offsetStr = dayUser?.offset != 0 ? ' (offset: ${dayUser?.offset})' : '';
+
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(12.0),
@@ -51,7 +53,7 @@ class DayCardBuilder {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}',
+              'Data: ${DateFormat('yyyy-MM-dd').format(dayData.date)}$offsetStr',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -61,7 +63,7 @@ class DayCardBuilder {
               icon: const Icon(Icons.info_outline, color: Colors.white),
               onPressed: () {
                 // Przygotowanie tekstu z wartościami
-                String values = day.measurements
+                String values = dayData.measurements
                     .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
                     .join('\n');
 
@@ -69,7 +71,7 @@ class DayCardBuilder {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: Text('Pomiary z dnia ${DateFormat('yyyy-MM-dd').format(day.date)}'),
+                    title: Text('Pomiary z dnia ${DateFormat('yyyy-MM-dd').format(dayData.date)}'),
                     content: SingleChildScrollView(
                       child: Text(values),
                     ),
