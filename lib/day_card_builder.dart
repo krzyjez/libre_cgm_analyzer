@@ -27,7 +27,7 @@ class DayCardBuilder {
             // Odstęp między nagłówkiem i obszarem roboczym
             const SizedBox(height: 4.0),
             // Obszar roboczy
-            _buildWorkingArea(day, treshold),
+            _buildWorkingArea(context, day, treshold),
           ],
         ),
       ),
@@ -91,25 +91,25 @@ class DayCardBuilder {
 
   /// Buduje obszar roboczy dla karty dnia.
   /// Zawiera trzy wiersze z tekstem.
-  static Widget _buildWorkingArea(DayData day, int treshold) {
+  static Widget _buildWorkingArea(BuildContext context, DayData day, int treshold) {
     return Padding(
       padding: const EdgeInsets.all(6.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Komentarze dzienne
-          _buildDailyComments(day),
+          _buildDailyComments(context, day),
           // wykres i statystyki
-          _buildChartAndStats(day, treshold),
+          _buildChartAndStats(context, day, treshold),
           // notatki
-          _buildNotes(day),
+          _buildNotes(context, day),
         ],
       ),
     );
   }
 
   /// Buduje sekcję komentarzy dziennych.
-  static Widget _buildDailyComments(DayData day) {
+  static Widget _buildDailyComments(BuildContext context, DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.blue[100], // Kolor tła dla pierwszego kontenera
@@ -118,28 +118,31 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(DayData day, int treshold) {
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      color: Colors.white,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _buildChart(day, treshold),
-          ),
-          SizedBox(
-            width: 220,
+  static Widget _buildChartAndStats(BuildContext context, DayData day, int treshold) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Wykres
+        Expanded(
+          child: SizedBox(
             height: chartHeight,
-            child: _buildStats(day),
+            child: _buildChart(context, day, treshold),
           ),
-        ],
-      ),
+        ),
+        // Odstęp między wykresem a statystykami
+        const SizedBox(width: 8),
+        // Statystyki
+        SizedBox(
+          width: 220,
+          height: chartHeight,
+          child: _buildStats(context, day),
+        ),
+      ],
     );
   }
 
   /// Buduje wykres na podstawie danych dnia.
-  static Widget _buildChart(DayData day, int treshold) {
+  static Widget _buildChart(BuildContext context, DayData day, int treshold) {
     // Przygotowanie danych do wykresu
     final chartData = day.measurements
         .map((measurement) => ChartData(measurement.timestamp, measurement.glucoseValue as double))
@@ -266,7 +269,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
-  static Widget _buildStats(DayData day) {
+  static Widget _buildStats(BuildContext context, DayData day) {
     if (day.periods.isEmpty) {
       return Container(
           padding: const EdgeInsets.all(8.0),
@@ -276,42 +279,91 @@ class DayCardBuilder {
     // Lista widgetów z przekroczeniami
     List<Widget> periodWidgets = [];
 
-    // Dodajemy nagłówek
-    periodWidgets
-        .add(Text('Przekroczenia: ${day.periods.length}', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)));
+    // Obliczamy sumę punktów
+    final totalPoints = day.periods.fold(0, (sum, period) => sum + period.points);
+
+    // Dodajemy nagłówek z liczbą przekroczeń i sumą punktów
+    periodWidgets.add(Text('Przekroczenia: ${day.periods.length}/$totalPoints',
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)));
+
     // odstęp
     periodWidgets.add(const SizedBox(height: 8));
 
-    // Dodajemy każde przekroczenie do listy
-    for (int i = 0; i < day.periods.length; i++) {
-      var period = day.periods[i];
+    // Dodajemy informacje o przekroczeniach
+    for (var i = 0; i < day.periods.length; i++) {
+      final period = day.periods[i];
       periodWidgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4.0),
-          child: Text('${i + 1}. Przekroczenie ${period.highestMeasure}/${period.points}'),
+        InkWell(
+          onTap: () => _showMeasurementsDialog(context, period),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Text(
+              '${i + 1}. Czas: ${DateFormat('HH:mm').format(period.startTime)} - ${DateFormat('HH:mm').format(period.endTime)}'
+              '\nMax: ${period.highestMeasure} mg/dL'
+              '\nPunkty: ${period.points}',
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
         ),
       );
     }
 
-    // Obliczamy sumę punktów
-    int totalPoints = day.periods.fold(0, (sum, period) => sum + period.points);
-
-    // Dodajemy odstęp i podsumowanie
+    // Dodajemy odstęp
     periodWidgets.add(const SizedBox(height: 8));
-    periodWidgets.add(Text('Razem punkty: $totalPoints', style: TextStyle(fontWeight: FontWeight.bold)));
 
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.red[50],
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: periodWidgets,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: chartHeight, // używamy tej samej wysokości co wykres
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: periodWidgets,
+          ),
+        ),
       ),
     );
   }
 
+  /// Wyświetla dialog z pomiarami dla danego okresu
+  static void _showMeasurementsDialog(BuildContext context, Period period) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+              'Pomiary ${DateFormat('HH:mm').format(period.startTime)} - ${DateFormat('HH:mm').format(period.endTime)}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: period.periodMeasurements
+                  .map((m) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Text(
+                          '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL',
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              child: const Text('Zamknij'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   /// Buduje sekcję notatek.
-  static Widget _buildNotes(DayData day) {
+  static Widget _buildNotes(BuildContext context, DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.yellow[100], // Kolor tła dla trzeciego kontenera
