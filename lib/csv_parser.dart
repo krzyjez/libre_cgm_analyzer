@@ -36,9 +36,18 @@ class CsvParser {
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   void parseCsv(String csvContent, int glucoseThreshold) {
-    // Dekodujemy zawartość CSV z UTF-8
-    final decodedContent = utf8.decode(csvContent.codeUnits, allowMalformed: true);
-    _data = decodedContent.split('\n').map((line) => line.split(',')).toList();
+    try {
+      // Próba dekodowania jako UTF-8
+      final decodedContent = utf8.decode(
+        csvContent.codeUnits,
+        allowMalformed: true
+      );
+      _data = decodedContent.split('\n').map((line) => line.split(',')).toList();
+    } catch (e) {
+      // Jeśli nie udało się zdekodować UTF-8, użyj surowych danych
+      _logger.error('Nie udało się zdekodować UTF-8, używam surowych danych: $e');
+      _data = csvContent.split('\n').map((line) => line.split(',')).toList();
+    }
 
     // Przetwarzanie wierszy CSV
     Map<DateTime, DayData> daysMap = {};

@@ -5,12 +5,13 @@ const path = require('path');
 
 const app = express();
 const port = 8000;
+const DATA_DIR = 'data_source';
 
 app.use(cors());
 app.use(express.json());
 
 // Ścieżka do pliku z danymi użytkownika
-const userDataPath = path.join(__dirname, 'data', 'user_data.json');
+const userDataPath = path.join(__dirname, '..', DATA_DIR, 'user_data.json');
 
 // Włączamy CORS dla wszystkich źródeł
 // Endpoint główny
@@ -19,11 +20,30 @@ app.get('/', (req, res) => {
 });
 
 // Endpoint zwracający plik CSV
-app.get('/data/glucose.csv', (req, res) => {
-  const filePath = path.join(__dirname, '..', 'data_source', 'KrzysztofJeż_glucose_12-12-2024.csv');
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename=glucose.csv');
-  res.sendFile(filePath);
+app.get('/data/glucose.csv', async (req, res) => {
+  try {
+    const dataDir = path.join(__dirname, '..', DATA_DIR);
+    const files = await fs.readdir(dataDir);
+    const csvFile = files.find(file => file.toLowerCase().endsWith('.csv'));
+    
+    if (!csvFile) {
+      return res.status(404).json({ error: 'Nie znaleziono pliku CSV' });
+    }
+
+    const filePath = path.join(dataDir, csvFile);
+    // wypisujemy informacje logowania o tym jaki plik próbujemy czytać
+    console.log(`Odczytujemy plik CSV: ${filePath}`);
+    res.setHeader('Content-Type', 'text/csv');
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Błąd wysyłania pliku:', err);
+        res.status(500).json({ error: 'Błąd podczas wysyłania pliku CSV' });
+      }
+    });
+  } catch (error) {
+    console.error('Błąd:', error);
+    res.status(500).json({ error: 'Błąd podczas odczytu pliku CSV' });
+  }
 });
 
 // Pobieranie danych użytkownika
@@ -32,13 +52,9 @@ app.get('/data/user', async (req, res) => {
     const exists = await fs.access(userDataPath).then(() => true).catch(() => false);
     
     if (!exists) {
-      // Jeśli plik nie istnieje, zwróć domyślne dane
-      const defaultData = {
-        treshold: 140,
-        days: []
-      };
-      await fs.writeFile(userDataPath, JSON.stringify(defaultData, null, 2));
-      return res.json(defaultData);
+      // Jeśli plik nie istnieje, zwróć pusty obiekt
+      await fs.writeFile(userDataPath, JSON.stringify({}, null, 2));
+      return res.json({});
     }
 
     const userData = await fs.readFile(userDataPath, 'utf8');

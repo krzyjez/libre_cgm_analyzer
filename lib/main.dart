@@ -10,6 +10,7 @@ import 'day_card_builder.dart';
 import 'api_service.dart';
 import 'logger.dart';
 import 'version.dart';
+import 'model.dart';
 
 void main() {
   runApp(const MyApp());
@@ -39,8 +40,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final int _treshold = 140;
   String? _fileName;
+  UserInfo? _userInfo;
   final CsvParser _csvParser = CsvParser();
   final ApiService _apiService = ApiService(baseUrl: 'http://localhost:8000');
   final _logger = Logger('MyHomePage');
@@ -58,7 +59,7 @@ class _MyHomePageState extends State<MyHomePage> {
           final csvContent = utf8.decode(fileBytes);
           setState(() {
             _fileName = result.files.first.name;
-            _csvParser.parseCsv(csvContent, _treshold);
+            _csvParser.parseCsv(csvContent, 140);
           });
 
           // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
@@ -85,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
       final String response = utf8.decode(bytes.buffer.asUint8List());
       setState(() {
         _fileName = 'Dane debugowe';
-        _csvParser.parseCsv(response, _treshold);
+        _csvParser.parseCsv(response, 140);
       });
       print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
     } catch (e) {
@@ -95,10 +96,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadDataFromApi() async {
     try {
-      final csvData = await _apiService.fetchGlucoseData();
-      _csvParser.parseCsv(csvData, _treshold);
+      // Pobierz równolegle dane CSV i dane użytkownika
+      final results = await Future.wait([
+        _apiService.fetchGlucoseData(),
+        _apiService.fetchUserData(),
+      ]);
+      
+      final csvData = results[0] as String;
+      final userData = results[1] as UserInfo;
+      
       setState(() {
         _fileName = 'Dane z serwera';
+        _userInfo = userData;
+        _csvParser.parseCsv(csvData, userData.treshold); // używamy progu z danych użytkownika
       });
     } catch (e) {
       _logger.error('Błąd podczas pobierania danych z API: $e');
@@ -135,7 +145,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   itemCount: _csvParser.days.length,
                   itemBuilder: (context, index) {
                     final day = _csvParser.days[index];
-                    return DayCardBuilder.buildDayCard(context, day, 140);
+                    return DayCardBuilder.buildDayCard(
+                      context, 
+                      day, 
+                      _userInfo?.treshold ?? 140
+                    );
                   },
                 ),
         ));

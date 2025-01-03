@@ -18,18 +18,17 @@ Map<String, dynamic> _$NoteToJson(Note instance) => <String, dynamic>{
 
 DayUser _$DayUserFromJson(Map<String, dynamic> json) => DayUser(
       DateTime.parse(json['date'] as String),
-      comments: (json['comments'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
+      comments: json['comments'] as String?,
       notes: (json['notes'] as List<dynamic>?)
           ?.map((e) => Note.fromJson(e as Map<String, dynamic>))
           .toList(),
-    );
+    )..offset = (json['offset'] as num).toInt();
 
 Map<String, dynamic> _$DayUserToJson(DayUser instance) => <String, dynamic>{
       'date': instance.date.toIso8601String(),
       'comments': instance.comments,
       'notes': instance.notes,
+      'offset': instance.offset,
     };
 
 UserInfo _$UserInfoFromJson(Map<String, dynamic> json) => UserInfo(
