@@ -11,7 +11,6 @@
 // FreeStyle LibreLink,ec45824e-2cd0-4a9b-9dd5-57d606627749,10-12-2022 14:12,6,,,,,,,,,,Kasza bulgur,,,,,
 // Note is at index 13
 import 'package:intl/intl.dart';
-import 'dart:convert';
 import 'model.dart';
 import 'logger.dart';
 import 'glucose_calculator.dart';
@@ -37,16 +36,10 @@ class CsvParser {
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   void parseCsv(String csvContent, int glucoseThreshold) {
     try {
-      // Próba dekodowania jako UTF-8
-      final decodedContent = utf8.decode(
-        csvContent.codeUnits,
-        allowMalformed: true
-      );
-      _data = decodedContent.split('\n').map((line) => line.split(',')).toList();
-    } catch (e) {
-      // Jeśli nie udało się zdekodować UTF-8, użyj surowych danych
-      _logger.error('Nie udało się zdekodować UTF-8, używam surowych danych: $e');
+      // Przetwarzanie wierszy CSV
       _data = csvContent.split('\n').map((line) => line.split(',')).toList();
+    } catch (e) {
+      _logger.error('Nie udało się przetworzyć pliku CSV: $e');
     }
 
     // Przetwarzanie wierszy CSV
@@ -59,9 +52,7 @@ class CsvParser {
       if (timestamp == null) continue;
 
       // Dla celów grupowania określamy do którego dnia należy pomiar
-      final displayDate = timestamp.hour < 4 
-          ? timestamp.subtract(const Duration(days: 1)) 
-          : timestamp;
+      final displayDate = timestamp.hour < 4 ? timestamp.subtract(const Duration(days: 1)) : timestamp;
       final dateOnly = DateTime(displayDate.year, displayDate.month, displayDate.day);
 
       var measurement = _tryParseMeasurement(line);

@@ -2,15 +2,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'csv_parser.dart';
-import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/services.dart' show rootBundle;
-import 'day_card_builder.dart';
-import 'api_service.dart';
-import 'logger.dart';
-import 'version.dart';
 import 'model.dart';
+import 'csv_parser.dart';
+import 'day_card_builder.dart';
+import 'logger.dart';
+import 'api_service.dart';
+import 'version.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,8 +42,8 @@ class _MyHomePageState extends State<MyHomePage> {
   String? _fileName;
   UserInfo? _userInfo;
   final CsvParser _csvParser = CsvParser();
-  final ApiService _apiService = ApiService(baseUrl: 'http://localhost:8000');
   final _logger = Logger('MyHomePage');
+  final _apiService = ApiService();
 
   Future<void> pickCsvFile(BuildContext context) async {
     try {
@@ -83,39 +81,29 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _loadDebugData() async {
     try {
-      final bytes = await rootBundle.load('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
-      final String response = utf8.decode(bytes.buffer.asUint8List());
+      final csvContent = await _apiService.loadDebugData();
       setState(() {
         _fileName = 'Dane debugowe';
-        _csvParser.parseCsv(response, defaultTreshold);
+        _csvParser.parseCsv(csvContent, defaultTreshold);
       });
       print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
     } catch (e) {
-      _logger.error('Błąd podczas wczytywania danych debugowych: $e');
+      _logger.error('Błąd podczas pobierania danych debugowych: $e');
     }
   }
 
   Future<void> _loadDataFromApi() async {
     try {
-      // Pobierz równolegle dane CSV i dane użytkownika
-      final results = await Future.wait([
-        _apiService.fetchGlucoseData(),
-        _apiService.fetchUserData(),
-      ]);
-
-      final csvData = results[0] as String;
-      final userData = results[1] as UserInfo;
-
+      final (userData, csvData) = await _apiService.loadDataFromApi();
       setState(() {
         _fileName = 'Dane z serwera';
         _userInfo = userData;
-        _csvParser.parseCsv(csvData, userData.treshold); // używamy progu z danych użytkownika
+        _csvParser.parseCsv(csvData, userData.treshold);
       });
     } catch (e) {
       _logger.error('Błąd podczas pobierania danych z API: $e');
-      // W przypadku błędu, wczytaj dane debugowe
-      print('Błąd pobierania danych z API: $e');
-      _loadDebugData();
+      // Jeśli nie udało się pobrać danych z API, ładujemy dane debugowe
+      await _loadDebugData();
     }
   }
 

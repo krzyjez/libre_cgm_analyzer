@@ -1,74 +1,62 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'logger.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'model.dart';
+import 'logger.dart';
 
 class ApiService {
-  final String baseUrl;
+  static const _baseUrl = 'http://localhost:8000';
   final _logger = Logger('ApiService');
 
-  ApiService({required this.baseUrl});
-
-  /// Pobiera plik CSV z danymi pomiarów glukozy
-  Future<String> fetchGlucoseData() async {
-    _logger.info('Próba pobrania danych z $baseUrl/data/glucose.csv');
-
+  /// Pobiera dane debugowe z pliku
+  Future<String> loadDebugData() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/data/glucose.csv'));
-
-      if (response.statusCode == 200) {
-        _logger.info('Pobrano dane pomyślnie (${response.body.length} bajtów)');
-        return response.body;
-      } else {
-        _logger.error('Błąd HTTP ${response.statusCode}');
-        throw Exception('Błąd pobierania danych: ${response.statusCode}');
-      }
+      final data = await rootBundle.loadString('data_source/KrzysztofJeż_glucose_12-12-2024.csv');
+      return data;
     } catch (e) {
-      _logger.error('Wyjątek podczas pobierania: $e');
+      _logger.error('Błąd podczas pobierania danych debugowych: $e');
       rethrow;
     }
   }
 
-  /// Pobiera dane użytkownika
-  Future<UserInfo> fetchUserData() async {
-    _logger.info('Pobieranie danych użytkownika');
-
+  /// Pobiera dane użytkownika i CSV z serwera
+  Future<(UserInfo, String)> loadDataFromApi() async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/data/user'));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _logger.info('Pobrano dane użytkownika');
-        return UserInfo.fromJson(data);
-      } else {
-        _logger.error('Błąd HTTP ${response.statusCode}');
-        throw Exception('Błąd pobierania danych użytkownika: ${response.statusCode}');
+      // Pobieranie danych użytkownika
+      final userResponse = await http.get(Uri.parse('$_baseUrl/user-data'));
+      if (userResponse.statusCode != 200) {
+        throw Exception('Failed to load user data');
       }
+      final userData = UserInfo.fromJson(jsonDecode(userResponse.body));
+
+      // Pobieranie danych CSV
+      final csvResponse = await http.get(Uri.parse('$_baseUrl/csv-data'));
+      if (csvResponse.statusCode != 200) {
+        throw Exception('Failed to load CSV data');
+      }
+      final csvData = csvResponse.body;
+
+      return (userData, csvData);
     } catch (e) {
-      _logger.error('Błąd podczas pobierania danych użytkownika: $e');
+      _logger.error('Błąd podczas pobierania danych z API: $e');
       rethrow;
     }
   }
 
-  /// Zapisuje dane użytkownika
-  Future<void> saveUserData(UserInfo userInfo) async {
-    _logger.info('Zapisywanie danych użytkownika');
-
+  /// Zapisuje dane użytkownika na serwerze
+  Future<void> saveUserData(UserInfo userData) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/data/user'),
+        Uri.parse('$_baseUrl/user-data'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(userInfo.toJson()),
+        body: jsonEncode(userData.toJson()),
       );
-
-      if (response.statusCode == 200) {
-        _logger.info('Dane użytkownika zapisane pomyślnie');
-      } else {
-        _logger.error('Błąd HTTP ${response.statusCode}');
-        throw Exception('Błąd zapisu danych użytkownika: ${response.statusCode}');
+      
+      if (response.statusCode != 200) {
+        throw Exception('Failed to save user data');
       }
     } catch (e) {
-      _logger.error('Błąd podczas zapisu danych użytkownika: $e');
+      _logger.error('Błąd podczas zapisywania danych użytkownika: $e');
       rethrow;
     }
   }
