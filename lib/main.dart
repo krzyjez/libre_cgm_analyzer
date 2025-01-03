@@ -142,6 +142,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       day,
                       _userInfo?.treshold ?? defaultTreshold,
                       dayUser,
+                      onOffsetChanged: _updateOffset,
                     );
                   },
                 ),
@@ -158,5 +159,21 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     return null;
+  }
+
+  /// Aktualizuje offset dla danego dnia
+  void _updateOffset(DateTime date, int newOffset) {
+    setState(() {
+      var dayUser = _findUserDayByDate(date);
+      if (dayUser == null) {
+        dayUser = DayUser(date);
+        dayUser.offset = newOffset;
+        _userInfo!.days.add(dayUser);
+      } else {
+        dayUser.offset = newOffset;
+      }
+    });
+    // Zapisz zmiany na serwerze
+    _apiService.saveUserData(_userInfo!);
   }
 }

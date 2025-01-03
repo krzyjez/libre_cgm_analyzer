@@ -48,4 +48,4 @@ if (-not (Test-ServerRunning)) {
 
 # Uruchom aplikację Flutter
 Write-Host "Uruchamiam aplikację Flutter..."
-flutter run -d chrome
+flutter run -d chrome --web-renderer canvaskit

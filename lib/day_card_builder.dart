@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'chart_data.dart';
 import 'model.dart';
+import 'logger.dart';
 
 class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia.
@@ -12,7 +14,13 @@ class DayCardBuilder {
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
 
-  static Widget buildDayCard(BuildContext context, DayData dayData, int treshold, DayUser? dayUser) {
+  static Widget buildDayCard(
+    BuildContext context,
+    DayData dayData,
+    int treshold,
+    DayUser? dayUser, {
+    required Function(DateTime date, int offset) onOffsetChanged,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
       child: Card(
@@ -59,34 +67,130 @@ class DayCardBuilder {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.info_outline, color: Colors.white),
-              onPressed: () {
-                // Przygotowanie tekstu z wartościami
-                String values = dayData.measurements
-                    .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
-                    .join('\n');
-
-                // Wyświetlenie dialogu
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: Text('Pomiary z dnia ${DateFormat('yyyy-MM-dd').format(dayData.date)}'),
-                    content: SingleChildScrollView(
-                      child: Text(values),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Zamknij'),
-                      ),
-                    ],
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.white),
+                  tooltip: 'Ustaw offset',
+                  onPressed: () => _showOffsetDialog(
+                    context,
+                    dayData.date,
+                    dayUser?.offset ?? 0,
+                    (date, offset) {},
                   ),
-                );
-              },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.info_outline, color: Colors.white),
+                  onPressed: () {
+                    // Przygotowanie tekstu z wartościami
+                    String values = dayData.measurements
+                        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                        .join('\n');
+
+                    // Wyświetlenie dialogu
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        child: Material(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Pomiary z dnia ${DateFormat('yyyy-MM-dd').format(dayData.date)}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                SingleChildScrollView(
+                                  child: Text(values),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      child: const Text('Zamknij'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Pokazuje dialog do ustawienia offsetu dla danego dnia
+  static void _showOffsetDialog(
+    BuildContext context,
+    DateTime date,
+    int currentOffset,
+    Function(DateTime date, int offset) onOffsetChanged,
+  ) {
+    final controller = TextEditingController(text: currentOffset.toString());
+    final logger = Logger('DayCardBuilder');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Ustaw offset dla ${DateFormat('yyyy-MM-dd').format(date)}'),
+        content: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.enter): () {
+              final newOffset = int.tryParse(controller.text) ?? 0;
+              logger.info('Ustawiono nowy offset: $newOffset');
+              onOffsetChanged(date, newOffset);
+              Navigator.pop(context);
+            },
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              Navigator.pop(context);
+            },
+          },
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Offset',
+              hintText: 'Wprowadź wartość offsetu',
+            ),
+            onSubmitted: (value) {
+              final newOffset = int.tryParse(value) ?? 0;
+              logger.info('Ustawiono nowy offset: $newOffset');
+              onOffsetChanged(date, newOffset);
+              Navigator.pop(context);
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () {
+              final newOffset = int.tryParse(controller.text) ?? 0;
+              logger.info('Ustawiono nowy offset: $newOffset');
+              onOffsetChanged(date, newOffset);
+              Navigator.pop(context);
+            },
+            child: const Text('Zapisz'),
+          ),
+        ],
       ),
     );
   }
@@ -335,30 +439,50 @@ class DayCardBuilder {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-              'Pomiary ${DateFormat('HH:mm').format(period.startTime)} - ${DateFormat('HH:mm').format(period.endTime)}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: period.periodMeasurements
-                  .map((m) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Text(
-                          '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ))
-                  .toList(),
+        return Dialog(
+          child: Material(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Pomiary ${DateFormat('HH:mm').format(period.startTime)} - ${DateFormat('HH:mm').format(period.endTime)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: period.periodMeasurements
+                          .map((m) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                                child: Text(
+                                  '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL',
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        child: const Text('Zamknij'),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              child: const Text('Zamknij'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
         );
       },
     );
