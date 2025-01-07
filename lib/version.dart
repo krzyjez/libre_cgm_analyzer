@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.7';
+const String appVersion = '4.0.8';
 
 /* Historia zmian:
+4.0.8
+- Naprawiono odświeżanie wykresu po zmianie offsetu
+- Dodano StatefulBuilder do karty dnia dla lepszego zarządzania stanem
+- Wykres teraz prawidłowo uwzględnia offset w wyświetlanych wartościach
+
 4.0.7
 - Poprawiono endpointy API (/csv-data i /user-data)
 - Dodano dokumentację API dostępną pod adresem /

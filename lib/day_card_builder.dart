@@ -13,28 +13,52 @@ class DayCardBuilder {
   static const glucoseColor = Colors.blue;
 
   /// Buduje widżet karty dla danego dnia
-  static Widget buildDayCard(
+  /// To jest główny punkt wejścia - tworzy StatefulBuilder który pozwala na odświeżanie karty
+  static Widget buildDayCard(BuildContext context, DayController controller, DayData day) {
+    // StatefulBuilder to specjalny widget który pozwala na lokalne zarządzanie stanem
+    // bez tworzenia osobnej klasy StatefulWidget
+    return StatefulBuilder(
+      // builder to funkcja która będzie wywoływana za każdym razem gdy trzeba przerysować kartę
+      // setStateCallback to funkcja którą wywołujemy gdy chcemy wymusić przerysowanie
+      builder: (BuildContext context, StateSetter setStateCallback) {
+        // Delegujemy właściwe budowanie karty do osobnej metody
+        return _buildCardContent(context, controller, day, setStateCallback);
+      },
+    );
+  }
+
+  /// Tworzy zawartość karty dnia - to jest właściwy builder wywoływany przy każdym odświeżeniu
+  /// [context] - kontekst Fluttera
+  /// [controller] - kontroler danych
+  /// [day] - dane dla danego dnia
+  /// [setStateCallback] - funkcja do wymuszenia przerysowania karty
+  static Widget _buildCardContent(
     BuildContext context,
     DayController controller,
     DayData day,
+    StateSetter setStateCallback,
   ) {
+    // Te zmienne są przeliczane na nowo przy każdym wywołaniu setStateCallback
     final dayUser = controller.findUserDayByDate(day.date);
     final offsetStr = dayUser?.offset != 0 ? ' (offset: ${dayUser?.offset})' : '';
 
+    // Zwracamy główny kontener z paddingiem
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
+      // Tworzymy kartę (widget Card)
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
+        // Układamy elementy w kolumnie (jeden pod drugim)
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Nagłówek
-            _buildHeader(context, controller, day, offsetStr),
-            // Odstęp między nagłówkiem i obszarem roboczym
+            // Nagłówek karty (z offsetem)
+            _buildHeader(context, controller, day, offsetStr, setStateCallback),
+            // Odstęp
             const SizedBox(height: 4.0),
-            // Obszar roboczy
+            // Główna zawartość (wykres itp.)
             _buildWorkingArea(context, controller, day),
           ],
         ),
@@ -48,6 +72,7 @@ class DayCardBuilder {
     DayController controller,
     DayData day,
     String offsetStr,
+    StateSetter setStateCallback,
   ) {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
@@ -73,18 +98,13 @@ class DayCardBuilder {
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.white),
                   tooltip: 'Ustaw offset',
-                  onPressed: () => _showOffsetDialog(
-                    context,
-                    controller,
-                    day.date,
-                  ),
+                  onPressed: () => _showOffsetDialog(context, controller, day.date, setStateCallback),
                 ),
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
                   onPressed: () {
                     String values = day.measurements
-                        .map((m) =>
-                            '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
                         .join('\n');
                     _showMeasurementsListDialog(context, 'Pomiary', values);
                   },
@@ -102,6 +122,7 @@ class DayCardBuilder {
     BuildContext context,
     DayController controller,
     DateTime date,
+    StateSetter setStateCallback,
   ) {
     final currentOffset = controller.getOffsetForDate(date);
     final textController = TextEditingController(text: currentOffset.toString());
@@ -119,6 +140,7 @@ class DayCardBuilder {
               if (await controller.updateOffset(date, newOffset)) {
                 if (context.mounted) {
                   Navigator.pop(context);
+                  setStateCallback(() {}); // Odświeżamy kartę
                 }
               } else {
                 if (context.mounted) {
@@ -149,6 +171,7 @@ class DayCardBuilder {
               if (await controller.updateOffset(date, newOffset)) {
                 if (context.mounted) {
                   Navigator.pop(context);
+                  setStateCallback(() {}); // Odświeżamy kartę
                 }
               } else {
                 if (context.mounted) {
@@ -175,6 +198,7 @@ class DayCardBuilder {
               if (await controller.updateOffset(date, newOffset)) {
                 if (context.mounted) {
                   Navigator.pop(context);
+                  setStateCallback(() {}); // Odświeżamy kartę
                 }
               } else {
                 if (context.mounted) {
@@ -253,7 +277,10 @@ class DayCardBuilder {
   static Widget _buildChart(BuildContext context, DayController controller, DayData day) {
     // Przygotowanie danych do wykresu
     final chartData = day.measurements
-        .map((measurement) => ChartData(measurement.timestamp, measurement.glucoseValue as double))
+        .map((measurement) => ChartData(
+              measurement.timestamp,
+              controller.getAdjustedGlucoseValue(day.date, measurement.glucoseValue) as double,
+            ))
         .toList();
 
     final tooltipBehavior = _buildTooltipBehavior(day);
