@@ -1,7 +1,11 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.9';
+const String appVersion = '4.0.10';
 
 /* Historia zmian:
+4.0.10
+- Optymalizacja UI: usunięto wyświetlanie pustego kontenera gdy nie ma notatek
+- Wykorzystano collection if do warunkowego renderowania widgetów
+
 4.0.9
 - Naprawiono wyświetlanie polskich znaków w komentarzach przez prawidłowe dekodowanie UTF-8
 

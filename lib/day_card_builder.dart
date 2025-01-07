@@ -233,8 +233,7 @@ class DayCardBuilder {
           _buildDailyComments(context, day),
           // wykres i statystyki
           _buildChartAndStats(context, controller, day),
-          // notatki
-          _buildNotes(context, day),
+          if (day.notes.isNotEmpty) _buildNotes(context, day),
         ],
       ),
     );
@@ -242,6 +241,11 @@ class DayCardBuilder {
 
   /// Buduje sekcję komentarzy dla dnia
   static Widget _buildDailyComments(BuildContext context, DayData day) {
+    // Nie tworzymy widgetu jeśli nie ma komentarzy
+    if (day.notes.isEmpty) {
+      return const SizedBox.shrink(); // Zwracamy widget o zerowym rozmiarze
+    }
+
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.blue[100], // Kolor tła dla pierwszego kontenera
@@ -519,6 +523,11 @@ class DayCardBuilder {
 
   /// Buduje sekcję notatek.
   static Widget _buildNotes(BuildContext context, DayData day) {
+    // Nie tworzymy widgetu jeśli nie ma notatek
+    if (day.notes.isEmpty) {
+      return const SizedBox.shrink(); // Zwracamy widget o zerowym rozmiarze
+    }
+
     return Container(
       padding: const EdgeInsets.all(8.0),
       color: Colors.yellow[100], // Kolor tła dla trzeciego kontenera
