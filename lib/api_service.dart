@@ -29,7 +29,7 @@ class ApiService {
       if (csvResponse.statusCode != 200) {
         throw Exception('Failed to load CSV data');
       }
-      final csvData = csvResponse.body;
+      final csvData = utf8.decode(csvResponse.bodyBytes);
       _logger.info('Pobrano dane CSV');
 
       // Pobieranie danych użytkownika

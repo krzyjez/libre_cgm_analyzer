@@ -1,7 +1,10 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.8';
+const String appVersion = '4.0.9';
 
 /* Historia zmian:
+4.0.9
+- Naprawiono wyświetlanie polskich znaków w komentarzach przez prawidłowe dekodowanie UTF-8
+
 4.0.8
 - Naprawiono odświeżanie wykresu po zmianie offsetu
 - Dodano StatefulBuilder do karty dnia dla lepszego zarządzania stanem
