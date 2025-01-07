@@ -16,11 +16,32 @@ const userDataPath = path.join(__dirname, '..', DATA_DIR, 'user_data.json');
 // Włączamy CORS dla wszystkich źródeł
 // Endpoint główny
 app.get('/', (req, res) => {
-  res.json({ message: 'API działa!' });
+  res.json({
+    message: 'API działa!',
+    endpoints: {
+      '/': {
+        method: 'GET',
+        description: 'Lista dostępnych endpointów API'
+      },
+      '/csv-data': {
+        method: 'GET',
+        description: 'Pobieranie danych CSV z pomiarami glukozy',
+        response: 'text/csv'
+      },
+      '/user-data': {
+        methods: {
+          GET: 'Pobieranie danych użytkownika',
+          POST: 'Zapisywanie danych użytkownika'
+        },
+        request: 'application/json',
+        response: 'application/json'
+      }
+    }
+  });
 });
 
 // Endpoint zwracający plik CSV
-app.get('/data/glucose.csv', async (req, res) => {
+app.get('/csv-data', async (req, res) => {
   try {
     const dataDir = path.join(__dirname, '..', DATA_DIR);
     const files = await fs.readdir(dataDir);
@@ -47,7 +68,7 @@ app.get('/data/glucose.csv', async (req, res) => {
 });
 
 // Pobieranie danych użytkownika
-app.get('/data/user', async (req, res) => {
+app.get('/user-data', async (req, res) => {
   try {
     const exists = await fs.access(userDataPath).then(() => true).catch(() => false);
     
@@ -65,13 +86,15 @@ app.get('/data/user', async (req, res) => {
 });
 
 // Zapisywanie danych użytkownika
-app.post('/data/user', async (req, res) => {
+app.post('/user-data', async (req, res) => {
   try {
-    const newData = req.body;
-    await fs.writeFile(userDataPath, JSON.stringify(newData, null, 2));
-    res.json({ message: 'Dane zapisane pomyślnie', data: newData });
+    const userData = req.body;
+    await fs.writeFile(userDataPath, JSON.stringify(userData, null, 2));
+    res.json({ message: 'Dane użytkownika zostały zapisane' });
+    console.log('Dane użytkownika zostały zapisane');
   } catch (error) {
-    res.status(500).json({ error: 'Błąd zapisu danych użytkownika' });
+    console.error('Błąd podczas zapisywania danych użytkownika:', error);
+    res.status(500).json({ error: 'Błąd podczas zapisywania danych użytkownika' });
   }
 });
 

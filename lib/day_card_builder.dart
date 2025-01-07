@@ -5,22 +5,22 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'chart_data.dart';
 import 'model.dart';
 import 'logger.dart';
+import 'day_controller.dart';
 
 class DayCardBuilder {
-  /// Buduje widżet karty dla danego dnia.
-  ///
-  /// Zawiera nagłówek z datą i obszar roboczy z trzema wierszami.
   static const double chartHeight = 300.0;
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
 
+  /// Buduje widżet karty dla danego dnia
   static Widget buildDayCard(
     BuildContext context,
-    DayData dayData,
-    int treshold,
-    DayUser? dayUser, {
-    required Function(DateTime date, int offset) onOffsetChanged,
-  }) {
+    DayController controller,
+    DayData day,
+  ) {
+    final dayUser = controller.findUserDayByDate(day.date);
+    final offsetStr = dayUser?.offset != 0 ? ' (offset: ${dayUser?.offset})' : '';
+
     return Padding(
       padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
       child: Card(
@@ -31,23 +31,24 @@ class DayCardBuilder {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Nagłówek
-            _buildHeader(context, dayData, dayUser),
+            _buildHeader(context, controller, day, offsetStr),
             // Odstęp między nagłówkiem i obszarem roboczym
             const SizedBox(height: 4.0),
             // Obszar roboczy
-            _buildWorkingArea(context, dayData, treshold),
+            _buildWorkingArea(context, controller, day),
           ],
         ),
       ),
     );
   }
 
-  /// Buduje nagłówek dla karty dnia.
-  ///
-  /// Zawiera datę z zaokrąglonymi rogami i ciemnozielonym tłem.
-  static Widget _buildHeader(BuildContext context, DayData dayData, DayUser? dayUser) {
-    final offsetStr = dayUser?.offset != 0 ? ' (offset: ${dayUser?.offset})' : '';
-
+  /// Buduje nagłówek dla karty dnia
+  static Widget _buildHeader(
+    BuildContext context,
+    DayController controller,
+    DayData day,
+    String offsetStr,
+  ) {
     return ClipRRect(
       borderRadius: const BorderRadius.only(
         topLeft: Radius.circular(12.0),
@@ -61,7 +62,7 @@ class DayCardBuilder {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Data: ${DateFormat('yyyy-MM-dd').format(dayData.date)}$offsetStr',
+              'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}$offsetStr',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -74,56 +75,18 @@ class DayCardBuilder {
                   tooltip: 'Ustaw offset',
                   onPressed: () => _showOffsetDialog(
                     context,
-                    dayData.date,
-                    dayUser?.offset ?? 0,
-                    (date, offset) {},
+                    controller,
+                    day.date,
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
                   onPressed: () {
-                    // Przygotowanie tekstu z wartościami
-                    String values = dayData.measurements
-                        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                    String values = day.measurements
+                        .map((m) =>
+                            '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
                         .join('\n');
-
-                    // Wyświetlenie dialogu
-                    showDialog(
-                      context: context,
-                      builder: (context) => Dialog(
-                        child: Material(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Pomiary z dnia ${DateFormat('yyyy-MM-dd').format(dayData.date)}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                SingleChildScrollView(
-                                  child: Text(values),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(),
-                                      child: const Text('Zamknij'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
+                    _showMeasurementsListDialog(context, 'Pomiary', values);
                   },
                 ),
               ],
@@ -137,11 +100,11 @@ class DayCardBuilder {
   /// Pokazuje dialog do ustawienia offsetu dla danego dnia
   static void _showOffsetDialog(
     BuildContext context,
+    DayController controller,
     DateTime date,
-    int currentOffset,
-    Function(DateTime date, int offset) onOffsetChanged,
   ) {
-    final controller = TextEditingController(text: currentOffset.toString());
+    final currentOffset = controller.getOffsetForDate(date);
+    final textController = TextEditingController(text: currentOffset.toString());
     final logger = Logger('DayCardBuilder');
 
     showDialog(
@@ -150,29 +113,53 @@ class DayCardBuilder {
         title: Text('Ustaw offset dla ${DateFormat('yyyy-MM-dd').format(date)}'),
         content: CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.enter): () {
-              final newOffset = int.tryParse(controller.text) ?? 0;
+            const SingleActivator(LogicalKeyboardKey.enter): () async {
+              final newOffset = int.tryParse(textController.text) ?? 0;
               logger.info('Ustawiono nowy offset: $newOffset');
-              onOffsetChanged(date, newOffset);
-              Navigator.pop(context);
+              if (await controller.updateOffset(date, newOffset)) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             const SingleActivator(LogicalKeyboardKey.escape): () {
               Navigator.pop(context);
             },
           },
           child: TextField(
-            controller: controller,
+            controller: textController,
             autofocus: true,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Offset',
               hintText: 'Wprowadź wartość offsetu',
             ),
-            onSubmitted: (value) {
+            onSubmitted: (value) async {
               final newOffset = int.tryParse(value) ?? 0;
               logger.info('Ustawiono nowy offset: $newOffset');
-              onOffsetChanged(date, newOffset);
-              Navigator.pop(context);
+              if (await controller.updateOffset(date, newOffset)) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
           ),
         ),
@@ -182,11 +169,23 @@ class DayCardBuilder {
             child: const Text('Anuluj'),
           ),
           TextButton(
-            onPressed: () {
-              final newOffset = int.tryParse(controller.text) ?? 0;
+            onPressed: () async {
+              final newOffset = int.tryParse(textController.text) ?? 0;
               logger.info('Ustawiono nowy offset: $newOffset');
-              onOffsetChanged(date, newOffset);
-              Navigator.pop(context);
+              if (await controller.updateOffset(date, newOffset)) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Zapisz'),
           ),
@@ -195,9 +194,12 @@ class DayCardBuilder {
     );
   }
 
-  /// Buduje obszar roboczy dla karty dnia.
-  /// Zawiera trzy wiersze z tekstem.
-  static Widget _buildWorkingArea(BuildContext context, DayData day, int treshold) {
+  /// Buduje obszar roboczy dla karty dnia
+  static Widget _buildWorkingArea(
+    BuildContext context,
+    DayController controller,
+    DayData day,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(6.0),
       child: Column(
@@ -206,7 +208,7 @@ class DayCardBuilder {
           // Komentarze dzienne
           _buildDailyComments(context, day),
           // wykres i statystyki
-          _buildChartAndStats(context, day, treshold),
+          _buildChartAndStats(context, controller, day),
           // notatki
           _buildNotes(context, day),
         ],
@@ -214,7 +216,7 @@ class DayCardBuilder {
     );
   }
 
-  /// Buduje sekcję komentarzy dziennych.
+  /// Buduje sekcję komentarzy dla dnia
   static Widget _buildDailyComments(BuildContext context, DayData day) {
     return Container(
       padding: const EdgeInsets.all(8.0),
@@ -224,7 +226,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(BuildContext context, DayData day, int treshold) {
+  static Widget _buildChartAndStats(BuildContext context, DayController controller, DayData day) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -232,7 +234,7 @@ class DayCardBuilder {
         Expanded(
           child: SizedBox(
             height: chartHeight,
-            child: _buildChart(context, day, treshold),
+            child: _buildChart(context, controller, day),
           ),
         ),
         // Odstęp między wykresem a statystykami
@@ -241,14 +243,14 @@ class DayCardBuilder {
         SizedBox(
           width: 220,
           height: chartHeight,
-          child: _buildStats(context, day),
+          child: _buildStats(context, controller, day),
         ),
       ],
     );
   }
 
   /// Buduje wykres na podstawie danych dnia.
-  static Widget _buildChart(BuildContext context, DayData day, int treshold) {
+  static Widget _buildChart(BuildContext context, DayController controller, DayData day) {
     // Przygotowanie danych do wykresu
     final chartData = day.measurements
         .map((measurement) => ChartData(measurement.timestamp, measurement.glucoseValue as double))
@@ -263,7 +265,7 @@ class DayCardBuilder {
       child: SfCartesianChart(
         plotAreaBackgroundColor: Colors.white,
         primaryXAxis: _buildXAxis(chartData, day.date),
-        primaryYAxis: _buildYAxis(chartData, treshold),
+        primaryYAxis: _buildYAxis(chartData, controller.treshold),
         tooltipBehavior: tooltipBehavior,
         series: <ChartSeries<ChartData, DateTime>>[
           // Seria liniowa - pokazuje odczyty glukozy w czasie
@@ -375,7 +377,7 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
-  static Widget _buildStats(BuildContext context, DayData day) {
+  static Widget _buildStats(BuildContext context, DayController controller, DayData day) {
     if (day.periods.isEmpty) {
       return Container(
           padding: const EdgeInsets.all(8.0),
@@ -434,8 +436,20 @@ class DayCardBuilder {
     );
   }
 
-  /// Wyświetla dialog z pomiarami dla danego okresu
+  /// Wyświetla dialog z okresem przekroczenia
   static void _showMeasurementsDialog(BuildContext context, Period period) {
+    final values = period.periodMeasurements
+        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+        .join('\n');
+    _showMeasurementsListDialog(
+      context,
+      'Przekroczenie (${period.points} pkt)',
+      values,
+    );
+  }
+
+  /// Wyświetla dialog z pomiarami
+  static void _showMeasurementsListDialog(BuildContext context, String title, String values) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -447,7 +461,7 @@ class DayCardBuilder {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Pomiary ${DateFormat('HH:mm').format(period.startTime)} - ${DateFormat('HH:mm').format(period.endTime)}',
+                    title,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -455,19 +469,7 @@ class DayCardBuilder {
                   ),
                   const SizedBox(height: 16),
                   SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: period.periodMeasurements
-                          .map((m) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                child: Text(
-                                  '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL',
-                                  style: const TextStyle(fontSize: 16),
-                                ),
-                              ))
-                          .toList(),
-                    ),
+                    child: Text(values),
                   ),
                   const SizedBox(height: 16),
                   Row(

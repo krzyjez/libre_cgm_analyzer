@@ -1,14 +1,26 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.6';
+const String appVersion = '4.0.7';
 
 /* Historia zmian:
+4.0.7
+- Poprawiono endpointy API (/csv-data i /user-data)
+- Dodano dokumentację API dostępną pod adresem /
+- Dodano endpoint POST /user-data do zapisywania danych użytkownika
+- Dodano lepsze logowanie operacji na serwerze
+
 4.0.6
 - Dodano możliwość ustawiania offsetu dla pomiarów z danego dnia
 - Dodano obsługę klawiszy (Enter - akceptacja, Escape - anulowanie) w dialogu offsetu
 - Zmieniono renderer na CanvasKit dla lepszej obsługi web
 - Znane problemy: 
-  * W przeglądarce występują problemy z focusem na polach tekstowych w dialogach
-  * Dialog offsetu czasami traci focus po kliknięciu
+  1. W przeglądarce występują problemy z focusem na polu tekstowym dialogu offsetu - gdy edit uzyska focus i 
+  poruszamy się nad nim myszką to wyskakuje błąd "The targeted input element must be the active input element"  
+  Więcej na ten temat: https://chatgpt.com/share/67782418-0cf8-8004-a98e-f300600162ad
 
-4.0.5
-- Wersja aplikacji w formacie semantycznym (major.minor.patch)
+
+
+
+
+
+
+*/

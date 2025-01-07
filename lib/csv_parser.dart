@@ -99,7 +99,7 @@ class CsvParser {
       final dateTime = DateFormat('dd-MM-yyyy HH:mm').parse(dateTimeString);
       return dateTime;
     } catch (e) {
-      _logger.error('Invalid date format: $dateTimeString');
+      //_logger.error('Invalid date format: $dateTimeString');
       return null;
     }
   }
