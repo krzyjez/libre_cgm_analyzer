@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'chart_data.dart';
 import 'model.dart';
-import 'logger.dart';
 import 'day_controller.dart';
+import 'dialogs/comment_dialog.dart';
+import 'dialogs/offset_dialog.dart';
+import 'dialogs/measurements_dialog.dart';
 
 class DayCardBuilder {
   static const double chartHeight = 300.0;
@@ -98,12 +99,22 @@ class DayCardBuilder {
                 IconButton(
                   icon: const Icon(Icons.comment, color: Colors.white),
                   tooltip: 'Dodaj komentarz',
-                  onPressed: () => _showCommentDialog(context, controller, day.date, setStateCallback),
+                  onPressed: () => CommentDialog.show(
+                    context: context,
+                    controller: controller,
+                    date: day.date,
+                    setStateCallback: setStateCallback,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, color: Colors.white),
                   tooltip: 'Ustaw offset',
-                  onPressed: () => _showOffsetDialog(context, controller, day.date, setStateCallback),
+                  onPressed: () => OffsetDialog.show(
+                    context: context,
+                    controller: controller,
+                    date: day.date,
+                    setStateCallback: setStateCallback,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.info_outline, color: Colors.white),
@@ -111,196 +122,17 @@ class DayCardBuilder {
                     String values = day.measurements
                         .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
                         .join('\n');
-                    _showMeasurementsListDialog(context, 'Pomiary', values);
+                    MeasurementsDialog.show(
+                      context: context,
+                      title: 'Pomiary',
+                      values: values,
+                    );
                   },
                 ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Pokazuje dialog do ustawienia offsetu dla danego dnia
-  static void _showOffsetDialog(
-    BuildContext context,
-    DayController controller,
-    DateTime date,
-    StateSetter setStateCallback,
-  ) {
-    final currentOffset = controller.getOffsetForDate(date);
-    final textController = TextEditingController(text: currentOffset.toString());
-    final logger = Logger('DayCardBuilder');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Ustaw offset dla ${DateFormat('yyyy-MM-dd').format(date)}'),
-        content: CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.enter): () async {
-              final newOffset = int.tryParse(textController.text) ?? 0;
-              logger.info('Ustawiono nowy offset: $newOffset');
-              if (await controller.updateOffset(date, newOffset)) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  setStateCallback(() {}); // Odświeżamy kartę
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            const SingleActivator(LogicalKeyboardKey.escape): () {
-              Navigator.pop(context);
-            },
-          },
-          child: TextField(
-            controller: textController,
-            autofocus: true,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Offset',
-              hintText: 'Wprowadź wartość offsetu',
-            ),
-            onSubmitted: (value) async {
-              final newOffset = int.tryParse(value) ?? 0;
-              logger.info('Ustawiono nowy offset: $newOffset');
-              if (await controller.updateOffset(date, newOffset)) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  setStateCallback(() {}); // Odświeżamy kartę
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final newOffset = int.tryParse(textController.text) ?? 0;
-              logger.info('Ustawiono nowy offset: $newOffset');
-              if (await controller.updateOffset(date, newOffset)) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  setStateCallback(() {}); // Odświeżamy kartę
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Zapisz'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Pokazuje dialog do dodania/edycji komentarza dla danego dnia
-  static void _showCommentDialog(
-    BuildContext context,
-    DayController controller,
-    DateTime date,
-    StateSetter setStateCallback,
-  ) {
-    final dayUser = controller.findUserDayByDate(date);
-    final textController = TextEditingController(text: dayUser?.comments ?? '');
-    final logger = Logger('DayCardBuilder');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Komentarz dla ${DateFormat('yyyy-MM-dd').format(date)}'),
-        content: CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.enter, control: true): () async {
-              final newComment = textController.text;
-              logger.info('Zapisano nowy komentarz: $newComment');
-              if (await controller.updateComment(date, newComment)) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  setStateCallback(() {}); // Odświeżamy kartę
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się zapisać komentarza. Spróbuj ponownie później.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            const SingleActivator(LogicalKeyboardKey.escape): () {
-              Navigator.pop(context);
-            },
-          },
-          child: TextField(
-            controller: textController,
-            autofocus: true,
-            maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Komentarz',
-              hintText: 'Wprowadź komentarz dla tego dnia',
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Anuluj'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final newComment = textController.text;
-              logger.info('Zapisano nowy komentarz: $newComment');
-              if (await controller.updateComment(date, newComment)) {
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  setStateCallback(() {}); // Odświeżamy kartę
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się zapisać komentarza. Spróbuj ponownie później.'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Zapisz'),
-          ),
-        ],
       ),
     );
   }
@@ -507,7 +339,13 @@ class DayCardBuilder {
       final period = day.periods[i];
       periodWidgets.add(
         InkWell(
-          onTap: () => _showMeasurementsDialog(context, period),
+          onTap: () => MeasurementsDialog.show(
+            context: context,
+            title: 'Przekroczenie (${period.points} pkt)',
+            values: period.periodMeasurements
+                .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                .join('\n'),
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Text(
@@ -538,60 +376,6 @@ class DayCardBuilder {
           ),
         ),
       ),
-    );
-  }
-
-  /// Wyświetla dialog z okresem przekroczenia
-  static void _showMeasurementsDialog(BuildContext context, Period period) {
-    final values = period.periodMeasurements
-        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
-        .join('\n');
-    _showMeasurementsListDialog(
-      context,
-      'Przekroczenie (${period.points} pkt)',
-      values,
-    );
-  }
-
-  /// Wyświetla dialog z pomiarami
-  static void _showMeasurementsListDialog(BuildContext context, String title, String values) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          child: Material(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SingleChildScrollView(
-                    child: Text(values),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        child: const Text('Zamknij'),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

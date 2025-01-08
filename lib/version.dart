@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.12';
+const String appVersion = '4.0.13';
 
 /* Historia zmian:
+4.0.13
+- Przeniesiono dialogi do osobnych plików w katalogu dialogs/
+- Dodano bazową klasę BaseDialog dla spójnego wyglądu i zachowania dialogów
+- Uproszczono kod w DayCardBuilder przez wydzielenie logiki dialogów
+
 4.0.12
 - Usunięto nieużywany widget _buildDailyComments
 - Poprawiono wyświetlanie komentarzy użytkownika - usunięto zielone tło i dodano odpowiednie marginesy
