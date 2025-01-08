@@ -90,10 +90,10 @@ class DayController extends ChangeNotifier {
         comments: newComment,
         notes: dayUser.notes,
       )..offset = dayUser.offset;
-      
+
       // Znajdujemy indeks starego dnia i zastępujemy go nowym
-      final index = _userInfo!.days.indexWhere((d) =>
-          d.date.year == date.year && d.date.month == date.month && d.date.day == date.day);
+      final index = _userInfo!.days
+          .indexWhere((d) => d.date.year == date.year && d.date.month == date.month && d.date.day == date.day);
       if (index != -1) {
         _userInfo!.days[index] = dayUser;
       }
@@ -106,6 +106,58 @@ class DayController extends ChangeNotifier {
       return true;
     } catch (e) {
       _logger.error('Błąd podczas zapisywania danych na serwerze: $e');
+      return false;
+    }
+  }
+
+  /// Znajduje notatkę użytkownika dla danego timestampa
+  /// Zwraca null jeśli nie znaleziono
+  Note? findUserNoteByTimestamp(DateTime date, DateTime timestamp) {
+    final dayUser = findUserDayByDate(date);
+    if (dayUser == null) return null;
+
+    for (var note in dayUser.notes) {
+      if (note.timestamp.isAtSameMomentAs(timestamp)) {
+        return note;
+      }
+    }
+
+    return null;
+  }
+
+  /// Zapisuje notatkę użytkownika dla danego dnia
+  /// Jeśli notatka o danym timestamp już istnieje, zostanie nadpisana
+  Future<bool> saveUserNote(DateTime date, Note newNote) async {
+    if (_userInfo == null) {
+      _logger.error('Próba zapisania notatki bez danych użytkownika');
+      return false;
+    }
+
+    var dayUser = findUserDayByDate(date);
+    if (dayUser == null) {
+      dayUser = DayUser(date);
+      dayUser.notes.add(newNote);
+      _userInfo!.days.add(dayUser);
+    } else {
+      // Szukamy czy już istnieje notatka o tym timestamp
+      final existingIndex = dayUser.notes.indexWhere((note) => note.timestamp.isAtSameMomentAs(newNote.timestamp));
+
+      if (existingIndex != -1) {
+        // Nadpisujemy istniejącą notatkę
+        dayUser.notes[existingIndex] = newNote;
+      } else {
+        // Dodajemy nową notatkę
+        dayUser.notes.add(newNote);
+      }
+    }
+
+    // Zapisujemy zmiany
+    try {
+      await _apiService.saveUserData(_userInfo!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logger.error('Błąd podczas zapisywania notatki użytkownika: $e');
       return false;
     }
   }

@@ -1,7 +1,13 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.13';
+const String appVersion = '4.0.14';
 
 /* Historia zmian:
+4.0.14
+- Dodano możliwość edycji notatek systemowych
+- Notatki edytowane przez użytkownika są wyświetlane w kolorze granatowym
+- Notatki z tym samym czasem są łączone w jedną notatkę
+- Dodano obsługę klawisza ESC do zamykania dialogów
+
 4.0.13
 - Przeniesiono dialogi do osobnych plików w katalogu dialogs/
 - Dodano bazową klasę BaseDialog dla spójnego wyglądu i zachowania dialogów

@@ -7,6 +7,7 @@ import 'day_controller.dart';
 import 'dialogs/comment_dialog.dart';
 import 'dialogs/offset_dialog.dart';
 import 'dialogs/measurements_dialog.dart';
+import 'dialogs/note_dialog.dart';
 
 class DayCardBuilder {
   static const double chartHeight = 300.0;
@@ -60,7 +61,7 @@ class DayCardBuilder {
             // Odstęp
             const SizedBox(height: 4.0),
             // Główna zawartość (wykres itp.)
-            _buildWorkingArea(context, controller, day),
+            _buildWorkingArea(context, controller, day, setStateCallback),
           ],
         ),
       ),
@@ -142,6 +143,7 @@ class DayCardBuilder {
     BuildContext context,
     DayController controller,
     DayData day,
+    StateSetter setStateCallback,
   ) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -153,7 +155,7 @@ class DayCardBuilder {
             _buildUserComment(context, controller.findUserDayByDate(day.date)!.comments),
           // wykres i statystyki
           _buildChartAndStats(context, controller, day),
-          if (day.notes.isNotEmpty) _buildNotes(context, day),
+          if (day.notes.isNotEmpty) _buildNotes(context, controller, day, setStateCallback),
         ],
       ),
     );
@@ -380,26 +382,84 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję notatek.
-  static Widget _buildNotes(BuildContext context, DayData day) {
+  static Widget _buildNotes(BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
+    // Pobieramy notatki użytkownika dla tego dnia
+    final dayUser = controller.findUserDayByDate(day.date);
+    
+    // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
+    final userNotes = <DateTime, Note>{};
+    if (dayUser != null) {
+      for (var note in dayUser.notes) {
+        userNotes[note.timestamp] = note;
+      }
+    }
+
+    // Grupujemy notatki systemowe po timestamp
+    final systemNotesByTime = <DateTime, List<String>>{};
+    for (var note in day.notes) {
+      systemNotesByTime.putIfAbsent(note.timestamp, () => []).add(note.note);
+    }
+
+    // Tworzymy końcową listę notatek
+    final allNotes = <Note>[];
+    for (var entry in systemNotesByTime.entries) {
+      final timestamp = entry.key;
+      // Jeśli istnieje notatka użytkownika, użyj jej
+      if (userNotes.containsKey(timestamp)) {
+        allNotes.add(userNotes[timestamp]!);
+      } else {
+        // W przeciwnym razie połącz notatki systemowe z tego samego czasu
+        final combinedNote = entry.value.join('\n');
+        allNotes.add(Note(timestamp, combinedNote));
+      }
+    }
+
+    // Sortujemy notatki po czasie
+    allNotes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
     // Nie tworzymy widgetu jeśli nie ma notatek
-    if (day.notes.isEmpty) {
+    if (allNotes.isEmpty) {
       return const SizedBox.shrink(); // Zwracamy widget o zerowym rozmiarze
     }
 
     return Container(
       padding: const EdgeInsets.all(8.0),
-      color: Colors.yellow[100], // Kolor tła dla trzeciego kontenera
+      color: Colors.yellow[100], // Kolor tła dla kontenera notatek
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: day.notes
+        children: allNotes
             .map((note) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        _createTextSpan('${DateFormat('HH:mm').format(note.timestamp)} ', fontWeight: FontWeight.bold),
-                        _createTextSpan(note.note),
-                      ],
+                  // Dodajemy możliwość kliknięcia na notatce
+                  child: InkWell(
+                    onTap: () {
+                      // Otwieramy dialog edycji notatki
+                      NoteDialog.show(
+                        context: context,
+                        controller: controller,
+                        date: day.date,
+                        originalNote: note,
+                        setStateCallback: setStateCallback,
+                      );
+                    },
+                    // Wyłączamy domyślny padding InkWell
+                    mouseCursor: SystemMouseCursors.click,
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          _createTextSpan(
+                            '${DateFormat('HH:mm').format(note.timestamp)} ',
+                            fontWeight: FontWeight.bold,
+                            // Kolor zależy od źródła notatki
+                            color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                          ),
+                          _createTextSpan(
+                            note.note,
+                            // Ten sam kolor dla całej notatki
+                            color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ))
