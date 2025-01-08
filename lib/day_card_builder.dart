@@ -96,6 +96,11 @@ class DayCardBuilder {
             Row(
               children: [
                 IconButton(
+                  icon: const Icon(Icons.comment, color: Colors.white),
+                  tooltip: 'Dodaj komentarz',
+                  onPressed: () => _showCommentDialog(context, controller, day.date, setStateCallback),
+                ),
+                IconButton(
                   icon: const Icon(Icons.edit, color: Colors.white),
                   tooltip: 'Ustaw offset',
                   onPressed: () => _showOffsetDialog(context, controller, day.date, setStateCallback),
@@ -218,6 +223,88 @@ class DayCardBuilder {
     );
   }
 
+  /// Pokazuje dialog do dodania/edycji komentarza dla danego dnia
+  static void _showCommentDialog(
+    BuildContext context,
+    DayController controller,
+    DateTime date,
+    StateSetter setStateCallback,
+  ) {
+    final dayUser = controller.findUserDayByDate(date);
+    final textController = TextEditingController(text: dayUser?.comments ?? '');
+    final logger = Logger('DayCardBuilder');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Komentarz dla ${DateFormat('yyyy-MM-dd').format(date)}'),
+        content: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.enter, control: true): () async {
+              final newComment = textController.text;
+              logger.info('Zapisano nowy komentarz: $newComment');
+              if (await controller.updateComment(date, newComment)) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  setStateCallback(() {}); // Odświeżamy kartę
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się zapisać komentarza. Spróbuj ponownie później.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            const SingleActivator(LogicalKeyboardKey.escape): () {
+              Navigator.pop(context);
+            },
+          },
+          child: TextField(
+            controller: textController,
+            autofocus: true,
+            maxLines: null,
+            decoration: const InputDecoration(
+              labelText: 'Komentarz',
+              hintText: 'Wprowadź komentarz dla tego dnia',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Anuluj'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newComment = textController.text;
+              logger.info('Zapisano nowy komentarz: $newComment');
+              if (await controller.updateComment(date, newComment)) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  setStateCallback(() {}); // Odświeżamy kartę
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się zapisać komentarza. Spróbuj ponownie później.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Zapisz'),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Buduje obszar roboczy dla karty dnia
   static Widget _buildWorkingArea(
     BuildContext context,
@@ -225,31 +312,18 @@ class DayCardBuilder {
     DayData day,
   ) {
     return Padding(
-      padding: const EdgeInsets.all(6.0),
+      padding: const EdgeInsets.all(8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Komentarze dzienne
-          _buildDailyComments(context, day),
+          // Komentarz użytkownika
+          if (controller.findUserDayByDate(day.date)?.comments.isNotEmpty ?? false)
+            _buildUserComment(context, controller.findUserDayByDate(day.date)!.comments),
           // wykres i statystyki
           _buildChartAndStats(context, controller, day),
           if (day.notes.isNotEmpty) _buildNotes(context, day),
         ],
       ),
-    );
-  }
-
-  /// Buduje sekcję komentarzy dla dnia
-  static Widget _buildDailyComments(BuildContext context, DayData day) {
-    // Nie tworzymy widgetu jeśli nie ma komentarzy
-    if (day.notes.isEmpty) {
-      return const SizedBox.shrink(); // Zwracamy widget o zerowym rozmiarze
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      color: Colors.blue[100], // Kolor tła dla pierwszego kontenera
-      child: const Text('wiersz 1'),
     );
   }
 
@@ -546,6 +620,32 @@ class DayCardBuilder {
                   ),
                 ))
             .toList(),
+      ),
+    );
+  }
+
+  /// Buduje sekcję z komentarzem użytkownika
+  static Widget _buildUserComment(BuildContext context, String comment) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18.0),
+      margin: const EdgeInsets.only(bottom: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Komentarz:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14.0,
+            ),
+          ),
+          const SizedBox(height: 4.0),
+          Text(
+            comment,
+            style: const TextStyle(fontSize: 14.0),
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,16 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.10';
+const String appVersion = '4.0.12';
 
 /* Historia zmian:
+4.0.12
+- Usunięto nieużywany widget _buildDailyComments
+- Poprawiono wyświetlanie komentarzy użytkownika - usunięto zielone tło i dodano odpowiednie marginesy
+
+4.0.11
+- Dodano możliwość dodawania komentarzy do dni
+- Komentarze są wyświetlane w zielonym polu pod nagłówkiem
+- Dodano przycisk do szybkiego dodawania komentarzy w nagłówku karty
+
 4.0.10
 - Optymalizacja UI: usunięto wyświetlanie pustego kontenera gdy nie ma notatek
 - Wykorzystano collection if do warunkowego renderowania widgetów

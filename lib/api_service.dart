@@ -25,7 +25,7 @@ class ApiService {
     try {
       // Pobieranie danych CSV
       final csvResponse = await http.get(Uri.parse('$_baseUrl/csv-data'));
-      _logger.info('kod pobieranie danyc csv: ${csvResponse.statusCode}');
+      //_logger.info('kod pobieranie danyc csv: ${csvResponse.statusCode}');
       if (csvResponse.statusCode != 200) {
         throw Exception('Failed to load CSV data');
       }

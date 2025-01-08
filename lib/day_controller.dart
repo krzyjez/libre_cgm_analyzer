@@ -71,4 +71,42 @@ class DayController extends ChangeNotifier {
   int getAdjustedGlucoseValue(DateTime date, int originalValue) {
     return originalValue + getOffsetForDate(date);
   }
+
+  /// Aktualizuje komentarz dla danego dnia
+  Future<bool> updateComment(DateTime date, String newComment) async {
+    if (_userInfo == null) {
+      _logger.error('Próba aktualizacji komentarza bez danych użytkownika');
+      return false;
+    }
+
+    var dayUser = findUserDayByDate(date);
+    if (dayUser == null) {
+      dayUser = DayUser(date, comments: newComment);
+      _userInfo!.days.add(dayUser);
+    } else {
+      // Aktualizujemy tylko pole comments, zachowując pozostałe wartości
+      dayUser = DayUser(
+        date,
+        comments: newComment,
+        notes: dayUser.notes,
+      )..offset = dayUser.offset;
+      
+      // Znajdujemy indeks starego dnia i zastępujemy go nowym
+      final index = _userInfo!.days.indexWhere((d) =>
+          d.date.year == date.year && d.date.month == date.month && d.date.day == date.day);
+      if (index != -1) {
+        _userInfo!.days[index] = dayUser;
+      }
+    }
+
+    // Zapisz zmiany na serwerze
+    try {
+      await _apiService.saveUserData(_userInfo!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logger.error('Błąd podczas zapisywania danych na serwerze: $e');
+      return false;
+    }
+  }
 }
