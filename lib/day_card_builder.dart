@@ -397,22 +397,28 @@ class DayCardBuilder {
     // Grupujemy notatki systemowe po timestamp
     final systemNotesByTime = <DateTime, List<String>>{};
     for (var note in day.notes) {
-      systemNotesByTime.putIfAbsent(note.timestamp, () => []).add(note.note);
+      systemNotesByTime.putIfAbsent(note.timestamp, () => []).add(note.note!);
     }
 
     // Tworzymy końcową listę notatek
     final allNotes = <Note>[];
     
-    // Dodajemy wszystkie timestampy do zbioru (zarówno z notatek systemowych jak i użytkownika)
+    // Dodajemy wszystkie timestampy do zbioru
     final allTimestamps = {...systemNotesByTime.keys, ...userNotes.keys};
     
     // Iterujemy po wszystkich timestampach
     for (var timestamp in allTimestamps) {
-      if (userNotes.containsKey(timestamp)) {
-        // Jeśli istnieje notatka użytkownika, użyj jej
-        allNotes.add(userNotes[timestamp]!);
+      final userNote = userNotes[timestamp];
+      
+      if (userNote != null) {
+        // Jeśli jest notatka użytkownika
+        if (userNote.note != null) {
+          // Jeśli notatka nie jest pusta (null), dodajemy ją
+          allNotes.add(userNote);
+        }
+        // Jeśli notatka jest pusta (null), pomijamy zarówno ją jak i notatkę systemową
       } else if (systemNotesByTime.containsKey(timestamp)) {
-        // W przeciwnym razie użyj połączonych notatek systemowych
+        // Jeśli nie ma notatki użytkownika (nawet pustej), używamy notatki systemowej
         final combinedNote = systemNotesByTime[timestamp]!.join('\n');
         allNotes.add(Note(timestamp, combinedNote));
       }
@@ -518,10 +524,14 @@ class DayCardBuilder {
   /// [fontSize] - rozmiar czcionki, domyślnie 14.
   /// [color] - kolor tekstu, domyślnie czarny.
   /// [fontWeight] - grubość czcionki, domyślnie normalna.
-  static TextSpan _createTextSpan(String text,
-      {double fontSize = 14, Color color = Colors.black, FontWeight fontWeight = FontWeight.normal}) {
+  static TextSpan _createTextSpan(
+    String? text, {
+    double fontSize = 14,
+    Color color = Colors.black,
+    FontWeight fontWeight = FontWeight.normal,
+  }) {
     return TextSpan(
-      text: text,
+      text: text ?? '',
       style: TextStyle(
         fontSize: fontSize,
         color: color,

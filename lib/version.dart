@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.17';
+const String appVersion = '4.0.18';
 
 /* Historia zmian:
+4.0.18
+- Dodano możliwość ukrywania notatek systemowych
+- Poprawiono zachowanie przy usuwaniu notatek użytkownika które nakładają się na systemowe
+- Zaktualizowano serializację notatek aby obsługiwała ukryte notatki
+
 4.0.17
 - Dodano możliwość usuwania notatek użytkownika (ale nie systemowych)
 - Poprawiono wygląd przycisków w dialogach

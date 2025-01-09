@@ -8,7 +8,7 @@ part of 'model.dart';
 
 Note _$NoteFromJson(Map<String, dynamic> json) => Note(
       DateTime.parse(json['timestamp'] as String),
-      json['note'] as String,
+      json['note'] as String?,
     );
 
 Map<String, dynamic> _$NoteToJson(Note instance) => <String, dynamic>{

@@ -160,22 +160,35 @@ class DayController extends ChangeNotifier {
     }
   }
 
-  /// Usuwa notatkę użytkownika
-  Future<bool> deleteUserNote(DateTime date, DateTime timestamp) async {
+  /// Usuwa lub ukrywa notatkę
+  /// Dla notatek użytkownika: ustawia tekst na null
+  /// Dla notatek systemowych: tworzy pustą notatkę użytkownika
+  Future<bool> deleteUserNote(DateTime date, DateTime timestamp, {bool isSystemNote = false}) async {
     if (_userInfo == null) {
       _logger.error('Próba usunięcia notatki bez danych użytkownika');
       return false;
     }
 
-    final dayUser = findUserDayByDate(date);
-    if (dayUser == null) return false;
+    var dayUser = findUserDayByDate(date);
+    if (dayUser == null) {
+      dayUser = DayUser(date);
+      _userInfo!.days.add(dayUser);
+    }
 
-    // Szukamy notatki o podanym timestamp
-    final noteIndex = dayUser.notes.indexWhere((note) => note.timestamp == timestamp);
-    if (noteIndex == -1) return false;
-
-    // Usuwamy notatkę
-    dayUser.notes.removeAt(noteIndex);
+    if (isSystemNote) {
+      // Dla notatki systemowej tworzymy pustą notatkę użytkownika
+      dayUser.notes.add(Note(timestamp, null));
+    } else {
+      // Dla notatki użytkownika ustawiamy tekst na null
+      final noteIndex = dayUser.notes.indexWhere((note) => note.timestamp == timestamp);
+      if (noteIndex != -1) {
+        // Aktualizujemy istniejącą notatkę
+        dayUser.notes[noteIndex] = Note(timestamp, null);
+      } else {
+        // Jeśli nie znaleziono notatki, to znaczy że próbujemy ukryć notatkę systemową
+        dayUser.notes.add(Note(timestamp, null));
+      }
+    }
 
     // Zapisujemy zmiany
     try {
@@ -183,7 +196,7 @@ class DayController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _logger.error('Błąd podczas usuwania notatki użytkownika: $e');
+      _logger.error('Błąd podczas usuwania notatki: $e');
       return false;
     }
   }

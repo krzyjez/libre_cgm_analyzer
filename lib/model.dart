@@ -12,12 +12,15 @@ class Measurement {
 @JsonSerializable()
 class Note {
   final DateTime timestamp;
-  final String note;
+  final String? note;
 
   Note(this.timestamp, this.note);
 
   factory Note.fromJson(Map<String, dynamic> json) => _$NoteFromJson(json);
   Map<String, dynamic> toJson() => _$NoteToJson(this);
+
+  @override
+  String toString() => 'Note(timestamp: $timestamp, note: $note)';
 }
 
 /// Dane dla pojedyczego dnia - z systemu LibreCGM

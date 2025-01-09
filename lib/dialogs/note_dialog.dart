@@ -136,21 +136,34 @@ class NoteDialog extends StatelessWidget {
       ),
       onCancel: () => Navigator.pop(context),
       onSave: saveNote,
-      onDelete: originalNote != null && userNotes.containsKey(originalNote!.timestamp)
+      onDelete: originalNote != null
           ? () async {
-              final success = await controller.deleteUserNote(date, originalNote!.timestamp);
+              // Sprawdzamy czy to notatka systemowa czy użytkownika
+              final isSystemNote = !userNotes.containsKey(originalNote!.timestamp);
+              final success = await controller.deleteUserNote(
+                date,
+                originalNote!.timestamp,
+                isSystemNote: isSystemNote,
+              );
               if (success) {
                 setStateCallback(() {});
                 if (context.mounted) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Notatka została usunięta')),
+                    SnackBar(
+                      content: Text(isSystemNote 
+                          ? 'Notatka systemowa została ukryta'
+                          : 'Notatka została usunięta'
+                      ),
+                    ),
                   );
                 }
               } else {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Nie udało się usunąć notatki')),
+                    const SnackBar(
+                      content: Text('Nie udało się usunąć notatki'),
+                    ),
                   );
                 }
               }
