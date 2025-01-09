@@ -1,7 +1,16 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.14';
+const String appVersion = '4.0.15';
 
 /* Historia zmian:
+4.0.15
+- Dodano możliwość dodawania nowych notatek (przycisk "Dodaj notatkę")
+- Dodano możliwość zmiany czasu dla istniejących notatek
+- Znane problemy: nie wszystkie funkcje związane z notatkami działają poprawnie:
+  - edycja czasu nie działa - nie zmienia się czas notatki
+  - dodawanie nowej notatki nie ziała - nie dodaje się nowa notatka,
+  - dialog dodawania nowej notatki ma błędy format domyślnego czasu notatki - jest on w formacie PM a powinien być w 24H
+
+
 4.0.14
 - Dodano możliwość edycji notatek systemowych
 - Notatki edytowane przez użytkownika są wyświetlane w kolorze granatowym
@@ -48,11 +57,3 @@ const String appVersion = '4.0.14';
   1. W przeglądarce występują problemy z focusem na polu tekstowym dialogu offsetu - gdy edit uzyska focus i 
   poruszamy się nad nim myszką to wyskakuje błąd "The targeted input element must be the active input element"  
   Więcej na ten temat: https://chatgpt.com/share/67782418-0cf8-8004-a98e-f300600162ad
-
-
-
-
-
-
-
-*/

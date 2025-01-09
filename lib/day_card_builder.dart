@@ -427,13 +427,13 @@ class DayCardBuilder {
       color: Colors.yellow[100], // Kolor tła dla kontenera notatek
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: allNotes
+        children: [
+          // Lista notatek
+          ...allNotes
             .map((note) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  // Dodajemy możliwość kliknięcia na notatce
                   child: InkWell(
                     onTap: () {
-                      // Otwieramy dialog edycji notatki
                       NoteDialog.show(
                         context: context,
                         controller: controller,
@@ -442,7 +442,6 @@ class DayCardBuilder {
                         setStateCallback: setStateCallback,
                       );
                     },
-                    // Wyłączamy domyślny padding InkWell
                     mouseCursor: SystemMouseCursors.click,
                     child: RichText(
                       text: TextSpan(
@@ -450,20 +449,35 @@ class DayCardBuilder {
                           _createTextSpan(
                             '${DateFormat('HH:mm').format(note.timestamp)} ',
                             fontWeight: FontWeight.bold,
-                            // Kolor zależy od źródła notatki
                             color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
                           ),
                           _createTextSpan(
                             note.note,
-                            // Ten sam kolor dla całej notatki
                             color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
                           ),
                         ],
                       ),
                     ),
                   ),
-                ))
-            .toList(),
+                )),
+          // Przycisk dodawania nowej notatki
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                NoteDialog.show(
+                  context: context,
+                  controller: controller,
+                  date: day.date,
+                  initialTime: TimeOfDay.now(),
+                  setStateCallback: setStateCallback,
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Dodaj notatkę'),
+            ),
+          ),
+        ],
       ),
     );
   }
