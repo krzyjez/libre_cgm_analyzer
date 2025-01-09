@@ -225,4 +225,9 @@ class DayController extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Zwraca URL do obrazka
+  String getImageUrl(String filename) {
+    return _apiService.getImageUrl(filename);
+  }
 }

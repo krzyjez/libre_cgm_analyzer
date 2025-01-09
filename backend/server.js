@@ -3,10 +3,47 @@ const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('./logger');
+const multer = require('multer');
 
 const app = express();
 const port = 8000;
 const DATA_DIR = 'data_source';
+const IMAGES_DIR = path.join(__dirname, '..', DATA_DIR, 'images');
+
+// Konfiguracja multer do obsługi przesyłania plików
+const storage = multer.diskStorage({
+  destination: async function (req, file, cb) {
+    try {
+      // Upewniamy się że katalog images istnieje
+      await fs.mkdir(IMAGES_DIR, { recursive: true });
+      cb(null, IMAGES_DIR);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: function (req, file, cb) {
+    // Używamy oryginalnej nazwy pliku
+    cb(null, file.originalname);
+  }
+});
+
+// Filtr akceptujący tylko obrazki
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Nieprawidłowy typ pliku. Dozwolone są tylko obrazki (JPEG, PNG, GIF)'));
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Limit 5MB
+  }
+});
 
 app.use(cors());
 app.use(express.json());
@@ -42,6 +79,21 @@ app.get('/', (req, res) => {
         },
         request: 'application/json',
         response: 'application/json'
+      },
+      '/images': {
+        methods: {
+          GET: 'Pobieranie listy obrazków',
+          POST: 'Dodawanie nowego obrazka'
+        },
+        request: 'multipart/form-data',
+        response: 'application/json'
+      },
+      '/images/:filename': {
+        methods: {
+          GET: 'Pobieranie obrazka',
+          DELETE: 'Usuwanie obrazka'
+        },
+        response: 'image/jpeg, image/png, image/gif'
       }
     }
   });
@@ -105,6 +157,88 @@ app.post('/user-data', async (req, res) => {
   } catch (error) {
     logger.error('Błąd podczas zapisywania danych użytkownika:', error);
     res.status(500).json({ error: 'Błąd podczas zapisywania danych użytkownika' });
+  }
+});
+
+// Endpoint do dodawania obrazka
+app.post('/images', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nie przesłano pliku' });
+    }
+
+    logger.info(`Dodano nowy obrazek: ${req.file.filename}`);
+    res.json({ 
+      message: 'Obrazek został dodany',
+      filename: req.file.filename
+    });
+  } catch (error) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Plik jest za duży (max 5MB)' });
+    }
+    logger.error('Błąd podczas dodawania obrazka:', error);
+    res.status(500).json({ error: 'Błąd podczas dodawania obrazka' });
+  }
+});
+
+// Endpoint do pobierania obrazka
+app.get('/images/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const imagePath = path.join(IMAGES_DIR, filename);
+
+    // Sprawdzamy czy plik istnieje
+    try {
+      await fs.access(imagePath);
+    } catch {
+      logger.error(`Nie znaleziono obrazka: ${filename}`);
+      return res.status(404).json({ error: 'Nie znaleziono obrazka' });
+    }
+
+    logger.info(`Pobrano obrazek: ${filename}`);
+    res.sendFile(imagePath);
+  } catch (error) {
+    logger.error('Błąd podczas pobierania obrazka:', error);
+    res.status(500).json({ error: 'Błąd podczas pobierania obrazka' });
+  }
+});
+
+// Endpoint do usuwania obrazka
+app.delete('/images/:filename', async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const imagePath = path.join(IMAGES_DIR, filename);
+
+    // Sprawdzamy czy plik istnieje
+    try {
+      await fs.access(imagePath);
+    } catch {
+      logger.error(`Nie znaleziono obrazka do usunięcia: ${filename}`);
+      return res.status(404).json({ error: 'Nie znaleziono obrazka' });
+    }
+
+    // Usuwamy plik
+    await fs.unlink(imagePath);
+    logger.info(`Usunięto obrazek: ${filename}`);
+    res.json({ message: 'Obrazek został usunięty' });
+  } catch (error) {
+    logger.error('Błąd podczas usuwania obrazka:', error);
+    res.status(500).json({ error: 'Błąd podczas usuwania obrazka' });
+  }
+});
+
+// Endpoint do listowania obrazków
+app.get('/images', async (req, res) => {
+  try {
+    // Upewniamy się że katalog images istnieje
+    await fs.mkdir(IMAGES_DIR, { recursive: true });
+    
+    const files = await fs.readdir(IMAGES_DIR);
+    logger.info(`Pobrano listę ${files.length} obrazków`);
+    res.json({ images: files });
+  } catch (error) {
+    logger.error('Błąd podczas listowania obrazków:', error);
+    res.status(500).json({ error: 'Błąd podczas listowania obrazków' });
   }
 });
 

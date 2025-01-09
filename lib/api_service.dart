@@ -79,4 +79,84 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Wysyła obrazek na serwer
+  Future<String> uploadImage(List<int> imageBytes, String filename) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/images');
+      final request = http.MultipartRequest('POST', uri)
+        ..files.add(
+          http.MultipartFile.fromBytes(
+            'image',
+            imageBytes,
+            filename: filename,
+          ),
+        );
+
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(responseData);
+        _logger.info('Wysłano obrazek: ${data['filename']}');
+        return data['filename'];
+      }
+      throw Exception('Błąd podczas wysyłania obrazka');
+    } catch (e) {
+      _logger.error('Błąd podczas wysyłania obrazka: $e');
+      rethrow;
+    }
+  }
+
+  /// Usuwa obrazek z serwera
+  Future<void> deleteImage(String filename) async {
+    try {
+      final response = await http.delete(Uri.parse('$_baseUrl/images/$filename'));
+      if (response.statusCode == 200) {
+        _logger.info('Usunięto obrazek: $filename');
+      } else {
+        throw Exception('Błąd podczas usuwania obrazka');
+      }
+    } catch (e) {
+      _logger.error('Błąd podczas usuwania obrazka: $e');
+      rethrow;
+    }
+  }
+
+  /// Zwraca URL do obrazka
+  String getImageUrl(String filename) {
+    return '$_baseUrl/images/$filename';
+  }
+
+  /// Pobiera obrazek z serwera
+  Future<List<int>> downloadImage(String filename) async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/images/$filename'));
+      if (response.statusCode == 200) {
+        _logger.info('Pobrano obrazek: $filename');
+        return response.bodyBytes;
+      }
+      throw Exception('Błąd podczas pobierania obrazka');
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania obrazka: $e');
+      rethrow;
+    }
+  }
+
+  /// Pobiera listę dostępnych obrazków
+  Future<List<String>> getImages() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/images'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final images = List<String>.from(data['images']);
+        _logger.info('Pobrano listę ${images.length} obrazków');
+        return images;
+      }
+      throw Exception('Błąd podczas pobierania listy obrazków');
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania listy obrazków: $e');
+      rethrow;
+    }
+  }
 }

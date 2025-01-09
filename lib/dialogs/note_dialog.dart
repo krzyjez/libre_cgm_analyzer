@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
 import '../day_controller.dart';
 import '../model.dart';
 import 'base_dialog.dart';
@@ -53,10 +54,9 @@ class NoteDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final textController = TextEditingController(text: originalNote?.note ?? '');
     final timeController = TextEditingController(
-      text: originalNote != null 
-          ? DateFormat('HH:mm').format(originalNote!.timestamp)
-          : _formatTimeOfDay(context, initialTime ?? TimeOfDay.now())
-    );
+        text: originalNote != null
+            ? DateFormat('HH:mm').format(originalNote!.timestamp)
+            : _formatTimeOfDay(context, initialTime ?? TimeOfDay.now()));
 
     // Pobieramy notatki użytkownika dla tego dnia
     final dayUser = controller.findUserDayByDate(date);
@@ -106,72 +106,169 @@ class NoteDialog extends StatelessWidget {
       }
     }
 
-    return BaseDialog(
-      title: originalNote != null 
-          ? 'Edycja notatki'
-          : 'Dodawanie notatki',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Pole do wprowadzenia czasu
-          TextField(
-            controller: timeController,
-            decoration: const InputDecoration(
-              labelText: 'Czas (HH:mm)',
-              hintText: 'np. 14:30',
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Pole do wprowadzenia treści notatki
-          TextField(
-            controller: textController,
-            autofocus: true,
-            maxLines: null,
-            decoration: const InputDecoration(
-              labelText: 'Notatka',
-              hintText: 'Wprowadź treść notatki',
-            ),
-          ),
-        ],
-      ),
-      onCancel: () => Navigator.pop(context),
-      onSave: saveNote,
-      onDelete: originalNote != null
-          ? () async {
-              // Sprawdzamy czy to notatka systemowa czy użytkownika
-              final isSystemNote = !userNotes.containsKey(originalNote!.timestamp);
-              final success = await controller.deleteUserNote(
-                date,
-                originalNote!.timestamp,
-                isSystemNote: isSystemNote,
-              );
-              if (success) {
-                setStateCallback(() {});
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isSystemNote 
-                          ? 'Notatka systemowa została ukryta'
-                          : 'Notatka została usunięta'
+    return DefaultTabController(
+      length: 2,
+      child: BaseDialog(
+        title: originalNote != null ? 'Edycja notatki' : 'Dodawanie notatki',
+        content: SizedBox(
+          width: 400,
+          height: 300,
+          child: Column(
+            children: [
+              // Pole do wprowadzenia czasu
+              TextField(
+                controller: timeController,
+                decoration: const InputDecoration(
+                  labelText: 'Czas (HH:mm)',
+                  hintText: 'np. 14:30',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TabBar(
+                tabs: const [
+                  Tab(text: 'Tekst'),
+                  Tab(text: 'Obrazki'),
+                ],
+                labelColor: Theme.of(context).primaryColor,
+                unselectedLabelColor: Colors.grey,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    // Zakładka z tekstem
+                    TextField(
+                      controller: textController,
+                      autofocus: true,
+                      maxLines: null,
+                      decoration: const InputDecoration(
+                        hintText: 'Wprowadź tekst notatki',
+                        contentPadding: EdgeInsets.all(8),
                       ),
                     ),
-                  );
-                }
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Nie udało się usunąć notatki'),
+                    // Zakładka z obrazkami
+                    Column(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final result = await FilePicker.platform.pickFiles(
+                              type: FileType.image,
+                              allowMultiple: false,
+                            );
+
+                            if (result != null && result.files.isNotEmpty) {
+                              final file = result.files.first;
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Wybrano plik: ${file.name}'),
+                                  ),
+                                );
+                                // TODO: Tutaj dodamy obsługę wysyłania pliku
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.add_photo_alternate),
+                          label: const Text('Dodaj obrazek'),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: GridView.builder(
+                            padding: const EdgeInsets.all(8),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 8,
+                              crossAxisSpacing: 8,
+                            ),
+                            itemCount: originalNote?.images.length ?? 0,
+                            itemBuilder: (context, index) {
+                              final imageUrl = controller.getImageUrl(originalNote!.images[index]);
+                              return Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      border: Border.all(color: Colors.grey),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.network(
+                                        imageUrl,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 4,
+                                    top: 4,
+                                    child: Container(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: IconButton(
+                                        icon: const Icon(Icons.delete, size: 20),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 24,
+                                          minHeight: 24,
+                                        ),
+                                        padding: EdgeInsets.zero,
+                                        onPressed: () {
+                                          // TODO: Tutaj dodamy usuwanie obrazka
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  );
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        onCancel: () => Navigator.pop(context),
+        onSave: saveNote,
+        onDelete: originalNote != null
+            ? () async {
+                // Sprawdzamy czy to notatka systemowa czy użytkownika
+                final isSystemNote = !userNotes.containsKey(originalNote!.timestamp);
+                final success = await controller.deleteUserNote(
+                  date,
+                  originalNote!.timestamp,
+                  isSystemNote: isSystemNote,
+                );
+                if (success) {
+                  setStateCallback(() {});
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(isSystemNote ? 'Notatka systemowa została ukryta' : 'Notatka została usunięta'),
+                      ),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nie udało się usunąć notatki'),
+                      ),
+                    );
+                  }
                 }
               }
-            }
-          : null,
-      additionalShortcuts: {
-        const SingleActivator(LogicalKeyboardKey.enter, control: true): saveNote,
-      },
+            : null,
+        additionalShortcuts: {
+          const SingleActivator(LogicalKeyboardKey.enter, control: true): saveNote,
+        },
+      ),
     );
   }
 }

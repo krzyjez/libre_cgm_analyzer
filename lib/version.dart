@@ -1,7 +1,45 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.19';
+const String appVersion = '4.0.20';
 
 /* Historia zmian:
+
+4.0.20 (2025-01-09)
+- Dodano:
+  1. Serwer FastAPI:
+    - Endpointy do zarządzania notatkami (/notes)
+    - Endpointy do zarządzania obrazkami (/images)
+    - Obsługa uploadowania plików
+    - Obsługa pobierania plików
+    - Walidacja typów plików (tylko obrazki)
+    - Bezpieczne przechowywanie plików
+- 2. Integracja z API:
+    - Klasa ApiService do komunikacji z serwerem
+    - Metody do zarządzania notatkami (CRUD)
+    - Metody do zarządzania obrazkami (upload/download/delete)
+    - Obsługa błędów i timeoutów
+    - Logowanie operacji
+- 3. Zarządzanie obrazkami w notatkach:
+    - Dodawanie obrazków przez przycisk "Dodaj obrazek"
+    - Wyświetlanie miniatur w siatce (3 kolumny)
+    - Hybrydowy system wyświetlania:
+      * Image.network dla istniejących obrazków
+      * Image.memory dla nowo dodanych (przed zapisem)
+    - Usuwanie obrazków (z pamięci lub serwera)
+    - Bezpieczne zapisywanie - obrazki wysyłane tylko przy zapisie notatki
+- 4. Usprawnienia UI:
+    - Przeniesienie pola czasu nad zakładki
+    - Usunięcie zbędnych etykiet
+    - Zaokrąglone rogi miniatur
+    - Przyciski usuwania na miniaturach
+    - Responsywny układ siatki
+- Do zrobienia w następnej wersji:
+  1. Podgląd obrazka w pełnym rozmiarze
+  2. Możliwość zmiany kolejności obrazków
+  3. Wskaźnik postępu przy uploadzie
+  4. Kompresja obrazków przed wysłaniem
+  5. Obsługa offline i synchronizacja
+
+
 4.0.19
 - Dodano możliwość usuwania komentarzy
 - Poprawiono wyświetlanie komentarzy - nie pokazują się gdy są puste
@@ -76,4 +114,5 @@ const String appVersion = '4.0.19';
   1. W przeglądarce występują problemy z focusem na polu tekstowym dialogu offsetu - gdy edit uzyska focus i 
   poruszamy się nad nim myszką to wyskakuje błąd "The targeted input element must be the active input element"  
   Więcej na ten temat: https://chatgpt.com/share/67782418-0cf8-8004-a98e-f300600162ad
+
 */

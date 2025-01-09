@@ -13,6 +13,8 @@ class Measurement {
 class Note {
   final DateTime timestamp;
   final String? note;
+  // lista obrazków przypisanych do notatki
+  final List<String> images = [];
 
   Note(this.timestamp, this.note);
 
@@ -39,6 +41,7 @@ class DayUser {
   final DateTime date;
   final List<Note> notes;
   String comments;
+
   /// wartość o którą będziemy modyfikować wartości glukozy rysowane na wykresie
   /// to dosyć wygodne jeśli np. czytnik zawyża pomiary
   int offset = 0;
