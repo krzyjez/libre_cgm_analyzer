@@ -110,6 +110,31 @@ class DayController extends ChangeNotifier {
     }
   }
 
+  /// Usuwa komentarz dla danego dnia
+  Future<bool> deleteComment(DateTime date) async {
+    if (_userInfo == null) {
+      _logger.error('Próba usunięcia komentarza bez danych użytkownika');
+      return false;
+    }
+
+    var dayUser = findUserDayByDate(date);
+    if (dayUser == null) {
+      _logger.error('Nie znaleziono dnia użytkownika dla daty $date');
+      return false;
+    }
+
+    dayUser.comments = '';
+
+    try {
+      await _apiService.saveUserData(_userInfo!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logger.error('Błąd podczas usuwania komentarza: $e');
+      return false;
+    }
+  }
+
   /// Znajduje notatkę użytkownika dla danego timestampa
   /// Zwraca null jeśli nie znaleziono
   Note? findUserNoteByTimestamp(DateTime date, DateTime timestamp) {

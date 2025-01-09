@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.18';
+const String appVersion = '4.0.19';
 
 /* Historia zmian:
+4.0.19
+- Dodano możliwość usuwania komentarzy
+- Poprawiono wyświetlanie komentarzy - nie pokazują się gdy są puste
+- Uproszczono interfejs komentarzy
+
 4.0.18
 - Dodano możliwość ukrywania notatek systemowych
 - Poprawiono zachowanie przy usuwaniu notatek użytkownika które nakładają się na systemowe

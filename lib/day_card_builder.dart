@@ -151,8 +151,7 @@ class DayCardBuilder {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Komentarz użytkownika
-          if (controller.findUserDayByDate(day.date)?.comments.isNotEmpty ?? false)
-            _buildUserComment(context, controller.findUserDayByDate(day.date)!.comments),
+          _buildUserComment(context, controller, day, setStateCallback),
           // wykres i statystyki
           _buildChartAndStats(context, controller, day),
           if (day.notes.isNotEmpty) _buildNotes(context, controller, day, setStateCallback),
@@ -429,51 +428,12 @@ class DayCardBuilder {
 
     // Nie tworzymy widgetu jeśli nie ma notatek
     if (allNotes.isEmpty) {
-      return const SizedBox.shrink(); // Zwracamy widget o zerowym rozmiarze
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(8.0),
-      color: Colors.yellow[100], // Kolor tła dla kontenera notatek
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Lista notatek
-          ...allNotes
-            .map((note) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: InkWell(
-                    onTap: () {
-                      NoteDialog.show(
-                        context: context,
-                        controller: controller,
-                        date: day.date,
-                        originalNote: note,
-                        setStateCallback: setStateCallback,
-                      );
-                    },
-                    mouseCursor: SystemMouseCursors.click,
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          _createTextSpan(
-                            '${DateFormat('HH:mm').format(note.timestamp)} ',
-                            fontWeight: FontWeight.bold,
-                            color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
-                          ),
-                          _createTextSpan(
-                            note.note,
-                            color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )),
-          // Przycisk dodawania nowej notatki
-          const SizedBox(height: 8),
-          Center(
-            child: TextButton.icon(
+      return Container(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextButton.icon(
               onPressed: () {
                 NoteDialog.show(
                   context: context,
@@ -486,6 +446,60 @@ class DayCardBuilder {
               icon: const Icon(Icons.add),
               label: const Text('Dodaj notatkę'),
             ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...allNotes.map((note) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4.0),
+                child: InkWell(
+                  onTap: () {
+                    NoteDialog.show(
+                      context: context,
+                      controller: controller,
+                      date: day.date,
+                      initialTime: TimeOfDay.fromDateTime(note.timestamp),
+                      originalNote: note,
+                      setStateCallback: setStateCallback,
+                    );
+                  },
+                  mouseCursor: SystemMouseCursors.click,
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        _createTextSpan(
+                          '${DateFormat('HH:mm').format(note.timestamp)} ',
+                          fontWeight: FontWeight.bold,
+                          color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                        ),
+                        _createTextSpan(
+                          note.note,
+                          color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              NoteDialog.show(
+                context: context,
+                controller: controller,
+                date: day.date,
+                initialTime: TimeOfDay.now(),
+                setStateCallback: setStateCallback,
+              );
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Dodaj notatkę'),
           ),
         ],
       ),
@@ -493,27 +507,36 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję z komentarzem użytkownika
-  static Widget _buildUserComment(BuildContext context, String comment) {
+  static Widget _buildUserComment(BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
+    // Pobieramy dane użytkownika dla tego dnia
+    final dayUser = controller.findUserDayByDate(day.date);
+    final comments = dayUser?.comments ?? '';
+
+    if (comments.isEmpty) {
+      return const SizedBox.shrink(); // Nie wyświetlamy nic jeśli nie ma komentarza
+    }
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18.0),
-      margin: const EdgeInsets.only(bottom: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Komentarz:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 14.0,
+      padding: const EdgeInsets.all(8.0),
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => CommentDialog(
+              controller: controller,
+              date: day.date,
+              setStateCallback: setStateCallback,
             ),
+          );
+        },
+        mouseCursor: SystemMouseCursors.click,
+        child: Text(
+          comments,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.black,
           ),
-          const SizedBox(height: 4.0),
-          Text(
-            comment,
-            style: const TextStyle(fontSize: 14.0),
-          ),
-        ],
+        ),
       ),
     );
   }

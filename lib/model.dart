@@ -37,15 +37,14 @@ class DayData {
 @JsonSerializable()
 class DayUser {
   final DateTime date;
-  final String comments;
   final List<Note> notes;
-
+  String comments;
   /// wartość o którą będziemy modyfikować wartości glukozy rysowane na wykresie
   /// to dosyć wygodne jeśli np. czytnik zawyża pomiary
   int offset = 0;
-  DayUser(this.date, {String? comments, List<Note>? notes})
-      : comments = comments ?? "",
-        notes = notes ?? [];
+  DayUser(this.date, {List<Note>? notes, String? comments})
+      : notes = notes ?? [],
+        comments = comments ?? '';
 
   factory DayUser.fromJson(Map<String, dynamic> json) => _$DayUserFromJson(json);
   Map<String, dynamic> toJson() => _$DayUserToJson(this);

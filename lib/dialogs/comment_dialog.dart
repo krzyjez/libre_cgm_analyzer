@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import '../day_controller.dart';
 import '../logger.dart';
 import 'base_dialog.dart';
@@ -46,7 +45,7 @@ class CommentDialog extends StatelessWidget {
     Future<void> saveComment() async {
       final newComment = textController.text;
       logger.info('Zapisuję nowy komentarz: $newComment');
-      
+
       if (await controller.updateComment(date, newComment)) {
         if (context.mounted) {
           Navigator.pop(context);
@@ -55,8 +54,8 @@ class CommentDialog extends StatelessWidget {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Nie udało się zapisać komentarza. Spróbuj ponownie później.'),
+            const SnackBar(
+              content: Text('Nie udało się zapisać komentarza'),
               backgroundColor: Colors.red,
             ),
           );
@@ -65,20 +64,45 @@ class CommentDialog extends StatelessWidget {
     }
 
     return BaseDialog(
-      title: 'Komentarz dla ${DateFormat('yyyy-MM-dd').format(date)}',
+      title: 'Edycja komentarza',
       content: TextField(
         controller: textController,
         autofocus: true,
         maxLines: null,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           labelText: 'Komentarz',
-          hintText: 'Wprowadź komentarz dla tego dnia',
+          hintText: 'Wprowadź komentarz',
         ),
       ),
       onCancel: () => Navigator.pop(context),
       onSave: saveComment,
+      onDelete: dayUser?.comments.isNotEmpty == true
+          ? () async {
+              final success = await controller.deleteComment(date);
+              if (success) {
+                setStateCallback(() {});
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Komentarz został usunięty'),
+                    ),
+                  );
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Nie udało się usunąć komentarza'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            }
+          : null,
       additionalShortcuts: {
-        SingleActivator(LogicalKeyboardKey.enter, control: true): saveComment,
+        const SingleActivator(LogicalKeyboardKey.enter, control: true): saveComment,
       },
     );
   }
