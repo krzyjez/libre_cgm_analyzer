@@ -125,9 +125,8 @@ class DayController extends ChangeNotifier {
     return null;
   }
 
-  /// Zapisuje notatkę użytkownika dla danego dnia
-  /// Jeśli notatka o danym timestamp już istnieje, zostanie nadpisana
-  Future<bool> saveUserNote(DateTime date, Note newNote) async {
+  /// Zapisuje notatkę użytkownika
+  Future<bool> saveUserNote(DateTime date, Note note) async {
     if (_userInfo == null) {
       _logger.error('Próba zapisania notatki bez danych użytkownika');
       return false;
@@ -136,19 +135,18 @@ class DayController extends ChangeNotifier {
     var dayUser = findUserDayByDate(date);
     if (dayUser == null) {
       dayUser = DayUser(date);
-      dayUser.notes.add(newNote);
       _userInfo!.days.add(dayUser);
-    } else {
-      // Szukamy czy już istnieje notatka o tym timestamp
-      final existingIndex = dayUser.notes.indexWhere((note) => note.timestamp.isAtSameMomentAs(newNote.timestamp));
+    }
 
-      if (existingIndex != -1) {
-        // Nadpisujemy istniejącą notatkę
-        dayUser.notes[existingIndex] = newNote;
-      } else {
-        // Dodajemy nową notatkę
-        dayUser.notes.add(newNote);
-      }
+    // Szukamy czy już istnieje notatka o tym samym timestamp
+    final existingNoteIndex = dayUser.notes.indexWhere((n) => n.timestamp == note.timestamp);
+
+    if (existingNoteIndex != -1) {
+      // Aktualizujemy istniejącą notatkę
+      dayUser.notes[existingNoteIndex] = note;
+    } else {
+      // Dodajemy nową notatkę
+      dayUser.notes.add(note);
     }
 
     // Zapisujemy zmiany
@@ -158,6 +156,34 @@ class DayController extends ChangeNotifier {
       return true;
     } catch (e) {
       _logger.error('Błąd podczas zapisywania notatki użytkownika: $e');
+      return false;
+    }
+  }
+
+  /// Usuwa notatkę użytkownika
+  Future<bool> deleteUserNote(DateTime date, DateTime timestamp) async {
+    if (_userInfo == null) {
+      _logger.error('Próba usunięcia notatki bez danych użytkownika');
+      return false;
+    }
+
+    final dayUser = findUserDayByDate(date);
+    if (dayUser == null) return false;
+
+    // Szukamy notatki o podanym timestamp
+    final noteIndex = dayUser.notes.indexWhere((note) => note.timestamp == timestamp);
+    if (noteIndex == -1) return false;
+
+    // Usuwamy notatkę
+    dayUser.notes.removeAt(noteIndex);
+
+    // Zapisujemy zmiany
+    try {
+      await _apiService.saveUserData(_userInfo!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logger.error('Błąd podczas usuwania notatki użytkownika: $e');
       return false;
     }
   }

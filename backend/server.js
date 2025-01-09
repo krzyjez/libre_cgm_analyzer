@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
 const path = require('path');
+const logger = require('./logger');
 
 const app = express();
 const port = 8000;
@@ -9,6 +10,12 @@ const DATA_DIR = 'data_source';
 
 app.use(cors());
 app.use(express.json());
+
+// Middleware do logowania wszystkich żądań
+app.use((req, res, next) => {
+  logger.request(req);
+  next();
+});
 
 // Ścieżka do pliku z danymi użytkownika
 const userDataPath = path.join(__dirname, '..', DATA_DIR, 'user_data.json');
@@ -48,21 +55,22 @@ app.get('/csv-data', async (req, res) => {
     const csvFile = files.find(file => file.toLowerCase().endsWith('.csv'));
     
     if (!csvFile) {
+      logger.error('Nie znaleziono pliku CSV');
       return res.status(404).json({ error: 'Nie znaleziono pliku CSV' });
     }
 
     const filePath = path.join(dataDir, csvFile);
-    // wypisujemy informacje logowania o tym jaki plik próbujemy czytać
-    console.log(`Odczytujemy plik CSV: ${filePath}`);
+    logger.info(`Odczytujemy plik CSV: ${filePath}`);
+    
     res.setHeader('Content-Type', 'text/csv');
     res.sendFile(filePath, (err) => {
       if (err) {
-        console.error('Błąd wysyłania pliku:', err);
+        logger.error('Błąd wysyłania pliku CSV:', err);
         res.status(500).json({ error: 'Błąd podczas wysyłania pliku CSV' });
       }
     });
   } catch (error) {
-    console.error('Błąd:', error);
+    logger.error('Błąd podczas odczytu pliku CSV:', error);
     res.status(500).json({ error: 'Błąd podczas odczytu pliku CSV' });
   }
 });
@@ -73,14 +81,16 @@ app.get('/user-data', async (req, res) => {
     const exists = await fs.access(userDataPath).then(() => true).catch(() => false);
     
     if (!exists) {
-      // Jeśli plik nie istnieje, zwróć pusty obiekt
+      logger.info('Tworzenie nowego pliku user_data.json');
       await fs.writeFile(userDataPath, JSON.stringify({}, null, 2));
       return res.json({});
     }
 
     const userData = await fs.readFile(userDataPath, 'utf8');
+    logger.info('Pobrano dane użytkownika');
     res.json(JSON.parse(userData));
   } catch (error) {
+    logger.error('Błąd odczytu danych użytkownika:', error);
     res.status(500).json({ error: 'Błąd odczytu danych użytkownika' });
   }
 });
@@ -89,15 +99,15 @@ app.get('/user-data', async (req, res) => {
 app.post('/user-data', async (req, res) => {
   try {
     const userData = req.body;
+    logger.info('Zapisywanie danych użytkownika:', userData);
     await fs.writeFile(userDataPath, JSON.stringify(userData, null, 2));
     res.json({ message: 'Dane użytkownika zostały zapisane' });
-    console.log('Dane użytkownika zostały zapisane');
   } catch (error) {
-    console.error('Błąd podczas zapisywania danych użytkownika:', error);
+    logger.error('Błąd podczas zapisywania danych użytkownika:', error);
     res.status(500).json({ error: 'Błąd podczas zapisywania danych użytkownika' });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Serwer działa na http://localhost:${port}`);
+  logger.info(`Serwer uruchomiony na porcie ${port}`);
 });

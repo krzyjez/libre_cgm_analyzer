@@ -402,14 +402,18 @@ class DayCardBuilder {
 
     // Tworzymy końcową listę notatek
     final allNotes = <Note>[];
-    for (var entry in systemNotesByTime.entries) {
-      final timestamp = entry.key;
-      // Jeśli istnieje notatka użytkownika, użyj jej
+    
+    // Dodajemy wszystkie timestampy do zbioru (zarówno z notatek systemowych jak i użytkownika)
+    final allTimestamps = {...systemNotesByTime.keys, ...userNotes.keys};
+    
+    // Iterujemy po wszystkich timestampach
+    for (var timestamp in allTimestamps) {
       if (userNotes.containsKey(timestamp)) {
+        // Jeśli istnieje notatka użytkownika, użyj jej
         allNotes.add(userNotes[timestamp]!);
-      } else {
-        // W przeciwnym razie połącz notatki systemowe z tego samego czasu
-        final combinedNote = entry.value.join('\n');
+      } else if (systemNotesByTime.containsKey(timestamp)) {
+        // W przeciwnym razie użyj połączonych notatek systemowych
+        final combinedNote = systemNotesByTime[timestamp]!.join('\n');
         allNotes.add(Note(timestamp, combinedNote));
       }
     }

@@ -21,11 +21,7 @@ class BaseDialog extends StatelessWidget {
   final VoidCallback onCancel;
 
   /// Funkcja wywoływana po kliknięciu Zapisz
-  final VoidCallback onSave;
-
-  /// Czy pokazywać przycisk Zapisz
-  /// Domyślnie true. Ustaw false dla dialogów tylko do odczytu
-  final bool showSaveButton;
+  final VoidCallback? onSave;
 
   /// Dodatkowe skróty klawiszowe specyficzne dla konkretnego dialogu
   /// Na przykład: CTRL+ENTER dla zapisywania komentarza
@@ -38,29 +34,32 @@ class BaseDialog extends StatelessWidget {
   /// ```
   final Map<ShortcutActivator, VoidCallback>? additionalShortcuts;
 
+  /// Funkcja wywoływana po kliknięciu Usuń
+  final VoidCallback? onDelete;
+
   const BaseDialog({
     super.key,
     required this.title,
     required this.content,
     required this.onCancel,
-    required this.onSave,
-    this.showSaveButton = true,
+    this.onSave,
     this.additionalShortcuts,
+    this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     // Opakowujemy cały dialog w CallbackShortcuts aby ESC działał zawsze,
     // niezależnie od tego, który element ma fokus
-    return CallbackShortcuts(
-      bindings: {
+    return Shortcuts(
+      shortcuts: {
         // ESC zawsze zamyka dialog bez zapisywania
-        const SingleActivator(LogicalKeyboardKey.escape): () {
-          Navigator.of(context).pop(); // Bezpośrednie zamknięcie dialogu
-        },
+        const SingleActivator(LogicalKeyboardKey.escape): VoidCallbackIntent(onCancel),
         // Operator spread (...?) dodaje skróty z additionalShortcuts
         // jeśli nie jest null
-        ...?additionalShortcuts,
+        ...?additionalShortcuts?.map(
+          (key, value) => MapEntry(key, VoidCallbackIntent(value)),
+        ),
       },
       child: AlertDialog(
         title: Text(
@@ -72,17 +71,38 @@ class BaseDialog extends StatelessWidget {
         ),
         content: content,
         actions: [
-          // Przycisk Anuluj - zawsze obecny
-          TextButton(
-            onPressed: onCancel,
-            child: const Text('Anuluj'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Przycisk usuwania (jeśli jest dostępny)
+              if (onDelete != null)
+                TextButton(
+                  onPressed: onDelete,
+                  child: const Text(
+                    'Usuń',
+                    style: TextStyle(
+                      color: Color(0xFF800000), // Kolor maroon
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(), // Pusty widget dla zachowania układu
+              // Przyciski Anuluj i Zapisz
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: onCancel,
+                    child: const Text('Anuluj'),
+                  ),
+                  if (onSave != null)
+                    TextButton(
+                      onPressed: onSave,
+                      child: const Text('Zapisz'),
+                    ),
+                ],
+              ),
+            ],
           ),
-          // Przycisk Zapisz - opcjonalny
-          if (showSaveButton)
-            TextButton(
-              onPressed: onSave,
-              child: const Text('Zapisz'),
-            ),
         ],
       ),
     );

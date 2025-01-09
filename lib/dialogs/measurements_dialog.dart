@@ -36,8 +36,6 @@ class MeasurementsDialog extends StatelessWidget {
         child: Text(values),
       ),
       onCancel: () => Navigator.pop(context),
-      onSave: () => Navigator.pop(context),
-      showSaveButton: false, // Ten dialog ma tylko przycisk zamknięcia
     );
   }
 }

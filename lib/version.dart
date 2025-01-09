@@ -1,7 +1,16 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.15';
+const String appVersion = '4.0.17';
 
 /* Historia zmian:
+4.0.17
+- Dodano możliwość usuwania notatek użytkownika (ale nie systemowych)
+- Poprawiono wygląd przycisków w dialogach
+- Zunifikowano sposób wyświetlania i obsługi przycisków w dialogach
+
+4.0.16
+- Naprawiono wyświetlanie notatek dodanych przez użytkownika
+- Dodano system logowania na serwerze (osobne pliki dla każdego dnia)
+
 4.0.15
 - Dodano możliwość dodawania nowych notatek (przycisk "Dodaj notatkę")
 - Dodano możliwość zmiany czasu dla istniejących notatek
@@ -57,3 +66,4 @@ const String appVersion = '4.0.15';
   1. W przeglądarce występują problemy z focusem na polu tekstowym dialogu offsetu - gdy edit uzyska focus i 
   poruszamy się nad nim myszką to wyskakuje błąd "The targeted input element must be the active input element"  
   Więcej na ten temat: https://chatgpt.com/share/67782418-0cf8-8004-a98e-f300600162ad
+*/

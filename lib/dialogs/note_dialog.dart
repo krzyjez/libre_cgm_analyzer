@@ -10,9 +10,9 @@ import 'base_dialog.dart';
 class NoteDialog extends StatelessWidget {
   final DayController controller;
   final DateTime date;
-  final Note? originalNote; // Może być null dla nowej notatki
+  final Note? originalNote;
   final StateSetter setStateCallback;
-  final TimeOfDay? initialTime; // Początkowy czas dla nowej notatki
+  final TimeOfDay? initialTime;
 
   const NoteDialog({
     super.key,
@@ -44,14 +44,28 @@ class NoteDialog extends StatelessWidget {
     );
   }
 
+  String _formatTimeOfDay(BuildContext context, TimeOfDay time) {
+    final localizations = MaterialLocalizations.of(context);
+    return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     final textController = TextEditingController(text: originalNote?.note ?? '');
     final timeController = TextEditingController(
       text: originalNote != null 
           ? DateFormat('HH:mm').format(originalNote!.timestamp)
-          : initialTime?.format(context) ?? TimeOfDay.now().format(context)
+          : _formatTimeOfDay(context, initialTime ?? TimeOfDay.now())
     );
+
+    // Pobieramy notatki użytkownika dla tego dnia
+    final dayUser = controller.findUserDayByDate(date);
+    final userNotes = <DateTime, Note>{};
+    if (dayUser != null) {
+      for (var note in dayUser.notes) {
+        userNotes[note.timestamp] = note;
+      }
+    }
 
     // Funkcja zapisująca notatkę
     Future<void> saveNote() async {
@@ -122,6 +136,26 @@ class NoteDialog extends StatelessWidget {
       ),
       onCancel: () => Navigator.pop(context),
       onSave: saveNote,
+      onDelete: originalNote != null && userNotes.containsKey(originalNote!.timestamp)
+          ? () async {
+              final success = await controller.deleteUserNote(date, originalNote!.timestamp);
+              if (success) {
+                setStateCallback(() {});
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Notatka została usunięta')),
+                  );
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Nie udało się usunąć notatki')),
+                  );
+                }
+              }
+            }
+          : null,
       additionalShortcuts: {
         const SingleActivator(LogicalKeyboardKey.enter, control: true): saveNote,
       },
