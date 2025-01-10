@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
 const logger = require('./logger');
 const multer = require('multer');
@@ -10,30 +11,43 @@ const port = 8000;
 const DATA_DIR = 'data_source';
 const IMAGES_DIR = path.join(__dirname, '..', DATA_DIR, 'images');
 
+// Upewniamy się, że katalog images istnieje
+(async () => {
+  try {
+    await fsPromises.mkdir(IMAGES_DIR, { recursive: true });
+    logger.info(`Utworzono katalog dla obrazków: ${IMAGES_DIR}`);
+  } catch (error) {
+    logger.error(`Błąd podczas tworzenia katalogu dla obrazków: ${error}`);
+  }
+})();
+
 // Konfiguracja multer do obsługi przesyłania plików
 const storage = multer.diskStorage({
-  destination: async function (req, file, cb) {
-    try {
-      // Upewniamy się że katalog images istnieje
-      await fs.mkdir(IMAGES_DIR, { recursive: true });
-      cb(null, IMAGES_DIR);
-    } catch (error) {
-      cb(error);
+  destination: function (req, file, cb) {
+    logger.info(`Próba zapisu pliku w katalogu: ${IMAGES_DIR}`);
+    // Sprawdzamy czy katalog istnieje synchronicznie
+    if (!fs.existsSync(IMAGES_DIR)) {
+      fs.mkdirSync(IMAGES_DIR, { recursive: true });
     }
+    cb(null, IMAGES_DIR);
   },
   filename: function (req, file, cb) {
-    // Używamy oryginalnej nazwy pliku
-    cb(null, file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const filename = path.basename(file.originalname, ext) + '-' + uniqueSuffix + ext;
+    logger.info(`Generowanie nazwy pliku: ${filename}`);
+    cb(null, filename);
   }
 });
 
 // Filtr akceptujący tylko obrazki
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  logger.info(`Sprawdzanie typu pliku: ${file.mimetype}`);
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Nieprawidłowy typ pliku. Dozwolone są tylko obrazki (JPEG, PNG, GIF)'));
+    cb(new Error(`Nieprawidłowy typ pliku. Dozwolone są tylko obrazki (JPEG, PNG, GIF). Otrzymano: ${file.mimetype}`));
   }
 };
 
@@ -50,7 +64,39 @@ app.use(express.json());
 
 // Middleware do logowania wszystkich żądań
 app.use((req, res, next) => {
-  logger.request(req);
+  // Logujemy podstawowe informacje o żądaniu
+  logger.info('REQUEST:', {
+    method: req.method,
+    url: req.url,
+    headers: req.headers
+  });
+
+  // Dla multipart/form-data logujemy tylko metadane
+  if (req.headers['content-type']?.includes('multipart/form-data')) {
+    let data = '';
+    req.on('data', chunk => {
+      // Zbieramy dane, ale nie logujemy ich
+      data += chunk;
+    });
+    req.on('end', () => {
+      // Wyciągamy tylko nazwy pól z formularza, bez zawartości
+      const boundary = req.headers['content-type'].split('boundary=')[1];
+      const parts = data.toString().split('--' + boundary);
+      const fields = parts
+        .filter(part => part && part !== '--\r\n')
+        .map(part => {
+          const match = part.match(/name="([^"]+)"/);
+          return match ? match[1] : null;
+        })
+        .filter(name => name);
+
+      logger.info('Multipart form data - pola:', {
+        fields,
+        contentLength: req.headers['content-length']
+      });
+    });
+  }
+
   next();
 });
 
@@ -103,7 +149,7 @@ app.get('/', (req, res) => {
 app.get('/csv-data', async (req, res) => {
   try {
     const dataDir = path.join(__dirname, '..', DATA_DIR);
-    const files = await fs.readdir(dataDir);
+    const files = await fsPromises.readdir(dataDir);
     const csvFile = files.find(file => file.toLowerCase().endsWith('.csv'));
     
     if (!csvFile) {
@@ -130,15 +176,15 @@ app.get('/csv-data', async (req, res) => {
 // Pobieranie danych użytkownika
 app.get('/user-data', async (req, res) => {
   try {
-    const exists = await fs.access(userDataPath).then(() => true).catch(() => false);
+    const exists = await fsPromises.access(userDataPath).then(() => true).catch(() => false);
     
     if (!exists) {
       logger.info('Tworzenie nowego pliku user_data.json');
-      await fs.writeFile(userDataPath, JSON.stringify({}, null, 2));
+      await fsPromises.writeFile(userDataPath, JSON.stringify({}, null, 2));
       return res.json({});
     }
 
-    const userData = await fs.readFile(userDataPath, 'utf8');
+    const userData = await fsPromises.readFile(userDataPath, 'utf8');
     logger.info('Pobrano dane użytkownika');
     res.json(JSON.parse(userData));
   } catch (error) {
@@ -152,7 +198,7 @@ app.post('/user-data', async (req, res) => {
   try {
     const userData = req.body;
     logger.info('Zapisywanie danych użytkownika:', userData);
-    await fs.writeFile(userDataPath, JSON.stringify(userData, null, 2));
+    await fsPromises.writeFile(userDataPath, JSON.stringify(userData, null, 2));
     res.json({ message: 'Dane użytkownika zostały zapisane' });
   } catch (error) {
     logger.error('Błąd podczas zapisywania danych użytkownika:', error);
@@ -161,24 +207,53 @@ app.post('/user-data', async (req, res) => {
 });
 
 // Endpoint do dodawania obrazka
-app.post('/images', upload.single('image'), async (req, res) => {
-  try {
+app.post('/images', (req, res, next) => {
+  logger.info('Przed multer:', {
+    contentType: req.headers['content-type'],
+    contentLength: req.headers['content-length']
+  });
+  
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      logger.error('Błąd multer:', {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        field: err.field,
+        storageError: err.storageErrors
+      });
+
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: 'Plik jest za duży (max 5MB)' });
+      }
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json({ error: `Błąd przetwarzania pliku: ${err.message}` });
+      }
+      return res.status(500).json({ error: `Błąd podczas przetwarzania pliku: ${err.message}` });
+    }
+    
+    logger.info('Po multer:', {
+      file: req.file,
+      body: req.body
+    });
+
     if (!req.file) {
-      return res.status(400).json({ error: 'Nie przesłano pliku' });
+      logger.error('Nie przesłano pliku lub błąd przetwarzania');
+      return res.status(400).json({ error: 'Nie przesłano pliku lub błąd przetwarzania' });
     }
 
-    logger.info(`Dodano nowy obrazek: ${req.file.filename}`);
+    logger.info(`Dodano nowy obrazek: ${req.file.filename}`, {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      path: req.file.path
+    });
+
     res.json({ 
       message: 'Obrazek został dodany',
       filename: req.file.filename
     });
-  } catch (error) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Plik jest za duży (max 5MB)' });
-    }
-    logger.error('Błąd podczas dodawania obrazka:', error);
-    res.status(500).json({ error: 'Błąd podczas dodawania obrazka' });
-  }
+  });
 });
 
 // Endpoint do pobierania obrazka
@@ -187,11 +262,17 @@ app.get('/images/:filename', async (req, res) => {
     const filename = req.params.filename;
     const imagePath = path.join(IMAGES_DIR, filename);
 
+    logger.info(`Próba pobrania obrazka: ${filename}`, {
+      path: imagePath
+    });
+
     // Sprawdzamy czy plik istnieje
     try {
-      await fs.access(imagePath);
+      await fsPromises.access(imagePath);
     } catch {
-      logger.error(`Nie znaleziono obrazka: ${filename}`);
+      logger.error(`Nie znaleziono obrazka: ${filename}`, {
+        path: imagePath
+      });
       return res.status(404).json({ error: 'Nie znaleziono obrazka' });
     }
 
@@ -199,7 +280,7 @@ app.get('/images/:filename', async (req, res) => {
     res.sendFile(imagePath);
   } catch (error) {
     logger.error('Błąd podczas pobierania obrazka:', error);
-    res.status(500).json({ error: 'Błąd podczas pobierania obrazka' });
+    res.status(500).json({ error: `Błąd podczas pobierania obrazka: ${error.message}` });
   }
 });
 
@@ -209,21 +290,25 @@ app.delete('/images/:filename', async (req, res) => {
     const filename = req.params.filename;
     const imagePath = path.join(IMAGES_DIR, filename);
 
-    // Sprawdzamy czy plik istnieje
+    logger.info(`Próba usunięcia obrazka: ${filename}`, {
+      path: imagePath
+    });
+
     try {
-      await fs.access(imagePath);
+      await fsPromises.access(imagePath);
     } catch {
-      logger.error(`Nie znaleziono obrazka do usunięcia: ${filename}`);
+      logger.error(`Nie znaleziono obrazka do usunięcia: ${filename}`, {
+        path: imagePath
+      });
       return res.status(404).json({ error: 'Nie znaleziono obrazka' });
     }
 
-    // Usuwamy plik
-    await fs.unlink(imagePath);
+    await fsPromises.unlink(imagePath);
     logger.info(`Usunięto obrazek: ${filename}`);
     res.json({ message: 'Obrazek został usunięty' });
   } catch (error) {
     logger.error('Błąd podczas usuwania obrazka:', error);
-    res.status(500).json({ error: 'Błąd podczas usuwania obrazka' });
+    res.status(500).json({ error: `Błąd podczas usuwania obrazka: ${error.message}` });
   }
 });
 
@@ -231,9 +316,9 @@ app.delete('/images/:filename', async (req, res) => {
 app.get('/images', async (req, res) => {
   try {
     // Upewniamy się że katalog images istnieje
-    await fs.mkdir(IMAGES_DIR, { recursive: true });
+    await fsPromises.mkdir(IMAGES_DIR, { recursive: true });
     
-    const files = await fs.readdir(IMAGES_DIR);
+    const files = await fsPromises.readdir(IMAGES_DIR);
     logger.info(`Pobrano listę ${files.length} obrazków`);
     res.json({ images: files });
   } catch (error) {

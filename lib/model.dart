@@ -1,6 +1,21 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'dart:typed_data';
 
 part 'model.g.dart';
+
+/// Reprezentuje obrazek przed wysłaniem na serwer
+class ImageDto {
+  /// Oryginalna nazwa pliku
+  final String filename;
+  
+  /// Bajty obrazka
+  final Uint8List bytes;
+
+  const ImageDto({
+    required this.filename,
+    required this.bytes,
+  });
+}
 
 class Measurement {
   final DateTime timestamp;
@@ -14,7 +29,7 @@ class Note {
   final DateTime timestamp;
   final String? note;
   // lista obrazków przypisanych do notatki
-  final List<String> images = [];
+  List<String> images = [];
 
   Note(this.timestamp, this.note);
 

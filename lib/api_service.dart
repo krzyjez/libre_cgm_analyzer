@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'model.dart';
 import 'logger.dart';
+import 'model.dart';
 
 class ApiService {
   static const _baseUrl = 'http://localhost:8000';
@@ -81,17 +82,34 @@ class ApiService {
   }
 
   /// Wysyła obrazek na serwer
-  Future<String> uploadImage(List<int> imageBytes, String filename) async {
+  Future<String> uploadImage(ImageDto image) async {
     try {
       final uri = Uri.parse('$_baseUrl/images');
-      final request = http.MultipartRequest('POST', uri)
-        ..files.add(
-          http.MultipartFile.fromBytes(
-            'image',
-            imageBytes,
-            filename: filename,
-          ),
-        );
+      final request = http.MultipartRequest('POST', uri);
+
+      // Określamy typ MIME na podstawie rozszerzenia pliku
+      String contentType = 'image/jpeg'; // domyślnie
+      if (image.filename.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (image.filename.toLowerCase().endsWith('.gif')) {
+        contentType = 'image/gif';
+      }
+
+      // Dodajemy plik do formularza z określonym typem MIME
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          image.bytes,
+          filename: image.filename,
+          contentType: MediaType.parse(contentType),
+        ),
+      );
+
+      // Dodajemy dodatkowe pola formularza
+      request.fields['filename'] = image.filename;
+
+      _logger.info(
+          'Wysyłanie żądania: uri=${uri.toString()}, filename=${image.filename}, size=${image.bytes.length}, contentType=$contentType');
 
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
@@ -109,17 +127,19 @@ class ApiService {
   }
 
   /// Usuwa obrazek z serwera
-  Future<void> deleteImage(String filename) async {
+  Future<bool> deleteImage(String filename) async {
     try {
       final response = await http.delete(Uri.parse('$_baseUrl/images/$filename'));
       if (response.statusCode == 200) {
         _logger.info('Usunięto obrazek: $filename');
+        return true;
       } else {
-        throw Exception('Błąd podczas usuwania obrazka');
+        _logger.error('Nie udało się usunąć obrazka: $filename (kod: ${response.statusCode})');
+        return false;
       }
     } catch (e) {
       _logger.error('Błąd podczas usuwania obrazka: $e');
-      rethrow;
+      return false;
     }
   }
 

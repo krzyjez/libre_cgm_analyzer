@@ -230,4 +230,65 @@ class DayController extends ChangeNotifier {
   String getImageUrl(String filename) {
     return _apiService.getImageUrl(filename);
   }
+
+  /// Wysyła obrazek na serwer
+  /// Zwraca nazwę pliku pod jaką został zapisany
+  Future<String> uploadImage(ImageDto image) async {
+    try {
+      final filename = await _apiService.uploadImage(image);
+      _logger.info('Wysłano obrazek: $filename');
+      return filename;
+    } catch (e) {
+      _logger.error('Błąd podczas wysyłania obrazka: $e');
+      rethrow;
+    }
+  }
+
+  /// Usuwa obrazek z serwera
+  Future<bool> deleteImage(String filename) async {
+    try {
+      final success = await _apiService.deleteImage(filename);
+      if (success) {
+        _logger.info('Usunięto obrazek: $filename');
+      } else {
+        _logger.error('Nie udało się usunąć obrazka: $filename');
+      }
+      return success;
+    } catch (e) {
+      _logger.error('Błąd podczas usuwania obrazka: $e');
+      return false;
+    }
+  }
+
+  /// Zapisuje notatkę wraz z obrazkami
+  Future<bool> saveNoteWithImages(
+    DateTime date,
+    Note note,
+    List<ImageDto> newImages,
+    List<String> imagesToDelete,
+  ) async {
+    try {
+      // 1. Usuwamy oznaczone obrazki
+      for (final filename in imagesToDelete) {
+        await deleteImage(filename);
+      }
+
+      // 2. Wysyłamy nowe obrazki
+      final uploadedImages = <String>[];
+      for (final image in newImages) {
+        final filename = await uploadImage(image);
+        uploadedImages.add(filename);
+      }
+
+      // 3. Aktualizujemy listę obrazków w notatce
+      final existingImages = note.images.where((img) => !imagesToDelete.contains(img)).toList();
+      note.images = [...existingImages, ...uploadedImages];
+
+      // 4. Zapisujemy notatkę
+      return await saveUserNote(date, note);
+    } catch (e) {
+      _logger.error('Błąd podczas zapisywania notatki z obrazkami: $e');
+      return false;
+    }
+  }
 }

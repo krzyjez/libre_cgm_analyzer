@@ -7,8 +7,7 @@ import '../model.dart';
 import 'base_dialog.dart';
 
 /// Dialog do edycji lub dodawania notatki
-@immutable
-class NoteDialog extends StatelessWidget {
+class NoteDialog extends StatefulWidget {
   final DayController controller;
   final DateTime date;
   final Note? originalNote;
@@ -45,21 +44,53 @@ class NoteDialog extends StatelessWidget {
     );
   }
 
-  String _formatTimeOfDay(BuildContext context, TimeOfDay time) {
-    final localizations = MaterialLocalizations.of(context);
-    return localizations.formatTimeOfDay(time, alwaysUse24HourFormat: true);
+  @override
+  State<NoteDialog> createState() => _NoteDialogState();
+}
+
+class _NoteDialogState extends State<NoteDialog> {
+  /// Lista tymczasowych obrazków
+  final List<ImageDto> _newImages = [];
+  
+  /// Lista obrazków do usunięcia
+  final List<String> _imagesToDelete = [];
+
+  late TextEditingController timeController;
+  late TextEditingController textController;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Używamy DateFormat zamiast _formatTimeOfDay w initState
+    if (widget.originalNote != null) {
+      timeController = TextEditingController(
+        text: DateFormat('HH:mm').format(widget.originalNote!.timestamp),
+      );
+    } else if (widget.initialTime != null) {
+      timeController = TextEditingController(
+        text: '${widget.initialTime!.hour.toString().padLeft(2, '0')}:${widget.initialTime!.minute.toString().padLeft(2, '0')}',
+      );
+    } else {
+      final now = TimeOfDay.now();
+      timeController = TextEditingController(
+        text: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
+      );
+    }
+    
+    textController = TextEditingController(text: widget.originalNote?.note ?? '');
+  }
+
+  @override
+  void dispose() {
+    timeController.dispose();
+    textController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final textController = TextEditingController(text: originalNote?.note ?? '');
-    final timeController = TextEditingController(
-        text: originalNote != null
-            ? DateFormat('HH:mm').format(originalNote!.timestamp)
-            : _formatTimeOfDay(context, initialTime ?? TimeOfDay.now()));
-
-    // Pobieramy notatki użytkownika dla tego dnia
-    final dayUser = controller.findUserDayByDate(date);
+    final dayUser = widget.controller.findUserDayByDate(widget.date);
     final userNotes = <DateTime, Note>{};
     if (dayUser != null) {
       for (var note in dayUser.notes) {
@@ -86,21 +117,47 @@ class NoteDialog extends StatelessWidget {
         }
 
         final timestamp = DateTime(
-          date.year,
-          date.month,
-          date.day,
+          widget.date.year,
+          widget.date.month,
+          widget.date.day,
           hour,
           minute,
         );
 
-        final newNote = Note(timestamp, textController.text);
-        await controller.saveUserNote(date, newNote);
-        setStateCallback(() {}); // Odświeżamy widok
-        if (context.mounted) Navigator.pop(context);
+        // Tworzymy nową notatkę lub aktualizujemy istniejącą
+        final note = widget.originalNote ?? Note(timestamp, textController.text);
+        if (widget.originalNote != null) {
+          note.images.clear();
+          note.images.addAll(widget.originalNote!.images);
+        }
+
+        // Zapisujemy notatkę wraz z obrazkami
+        final success = await widget.controller.saveNoteWithImages(
+          widget.date,
+          note,
+          _newImages,
+          _imagesToDelete,
+        );
+
+        if (success) {
+          widget.setStateCallback(() {});
+          if (context.mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Notatka została zapisana')),
+            );
+          }
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Nie udało się zapisać notatki')),
+            );
+          }
+        }
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nieprawidłowy format czasu. Użyj HH:mm')),
+            SnackBar(content: Text('Błąd: $e')),
           );
         }
       }
@@ -109,7 +166,7 @@ class NoteDialog extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: BaseDialog(
-        title: originalNote != null ? 'Edycja notatki' : 'Dodawanie notatki',
+        title: widget.originalNote != null ? 'Edycja notatki' : 'Dodawanie notatki',
         content: SizedBox(
           width: 400,
           height: 300,
@@ -119,9 +176,7 @@ class NoteDialog extends StatelessWidget {
               TextField(
                 controller: timeController,
                 decoration: const InputDecoration(
-                  labelText: 'Czas (HH:mm)',
                   hintText: 'np. 14:30',
-                  border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 16),
@@ -159,14 +214,12 @@ class NoteDialog extends StatelessWidget {
 
                             if (result != null && result.files.isNotEmpty) {
                               final file = result.files.first;
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Wybrano plik: ${file.name}'),
-                                  ),
-                                );
-                                // TODO: Tutaj dodamy obsługę wysyłania pliku
-                              }
+                              setState(() {
+                                _newImages.add(ImageDto(
+                                  filename: file.name,
+                                  bytes: file.bytes!,
+                                ));
+                              });
                             }
                           },
                           icon: const Icon(Icons.add_photo_alternate),
@@ -181,47 +234,94 @@ class NoteDialog extends StatelessWidget {
                               mainAxisSpacing: 8,
                               crossAxisSpacing: 8,
                             ),
-                            itemCount: originalNote?.images.length ?? 0,
+                            itemCount: (widget.originalNote?.images.length ?? 0) + _newImages.length,
                             itemBuilder: (context, index) {
-                              final imageUrl = controller.getImageUrl(originalNote!.images[index]);
-                              return Stack(
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
+                              final existingImagesCount = widget.originalNote?.images.length ?? 0;
+                              if (index < existingImagesCount) {
+                                final imageUrl = widget.controller.getImageUrl(widget.originalNote!.images[index]);
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.grey),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 4,
-                                    top: 4,
-                                    child: Container(
-                                      decoration: const BoxDecoration(
-                                        color: Colors.white,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.delete, size: 20),
-                                        constraints: const BoxConstraints(
-                                          minWidth: 24,
-                                          minHeight: 24,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          imageUrl,
+                                          fit: BoxFit.cover,
                                         ),
-                                        padding: EdgeInsets.zero,
-                                        onPressed: () {
-                                          // TODO: Tutaj dodamy usuwanie obrazka
-                                        },
                                       ),
                                     ),
-                                  ),
-                                ],
-                              );
+                                    Positioned(
+                                      right: 4,
+                                      top: 4,
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(Icons.delete, size: 20),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 24,
+                                            minHeight: 24,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          onPressed: () {
+                                            setState(() {
+                                              _imagesToDelete.add(widget.originalNote!.images[index]);
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                final image = _newImages[index - existingImagesCount];
+                                return Stack(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: Colors.grey),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.memory(
+                                          image.bytes,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 4,
+                                      top: 4,
+                                      child: Container(
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: IconButton(
+                                          icon: const Icon(Icons.delete, size: 20),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 24,
+                                            minHeight: 24,
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                          onPressed: () {
+                                            setState(() {
+                                              _newImages.removeAt(index - existingImagesCount);
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
                             },
                           ),
                         ),
@@ -235,17 +335,17 @@ class NoteDialog extends StatelessWidget {
         ),
         onCancel: () => Navigator.pop(context),
         onSave: saveNote,
-        onDelete: originalNote != null
+        onDelete: widget.originalNote != null
             ? () async {
                 // Sprawdzamy czy to notatka systemowa czy użytkownika
-                final isSystemNote = !userNotes.containsKey(originalNote!.timestamp);
-                final success = await controller.deleteUserNote(
-                  date,
-                  originalNote!.timestamp,
+                final isSystemNote = !userNotes.containsKey(widget.originalNote!.timestamp);
+                final success = await widget.controller.deleteUserNote(
+                  widget.date,
+                  widget.originalNote!.timestamp,
                   isSystemNote: isSystemNote,
                 );
                 if (success) {
-                  setStateCallback(() {});
+                  widget.setStateCallback(() {});
                   if (context.mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
