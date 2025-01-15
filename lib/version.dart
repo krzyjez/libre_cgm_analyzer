@@ -1,7 +1,11 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.21';
+const String appVersion = '4.0.22';
 
 /* Historia zmian:
+
+4.0.22 (2025-01-15)
+    Zmieniono nazwy plików obrazków na unikalne. 
+    Zapobiega to konfliktom nazw i ułatwia identyfikację daty utworzenia
 
 4.0.21 (2025-01-15)
 - Naprawiono:
