@@ -1,7 +1,14 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.22';
+const String appVersion = '4.0.23';
 
 /* Historia zmian:
+
+4.0.23 (2025-01-15)
+    Ulepszono wyświetlanie obrazków w notatkach:
+    - Dodano ikony obrazków przy notatkach
+    - Dodano podgląd obrazka po kliknięciu w ikonę
+    - Dostosowano rozmiar podglądu do wielkości ekranu
+    - Dodano intuicyjne zamykanie podglądu przez kliknięcie
 
 4.0.22 (2025-01-15)
     Zmieniono nazwy plików obrazków na unikalne. 

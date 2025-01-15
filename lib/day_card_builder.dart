@@ -8,6 +8,7 @@ import 'dialogs/comment_dialog.dart';
 import 'dialogs/offset_dialog.dart';
 import 'dialogs/measurements_dialog.dart';
 import 'dialogs/note_dialog.dart';
+import 'dialogs/image_dialog.dart';
 
 class DayCardBuilder {
   static const double chartHeight = 300.0;
@@ -384,7 +385,7 @@ class DayCardBuilder {
   static Widget _buildNotes(BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
     // Pobieramy notatki użytkownika dla tego dnia
     final dayUser = controller.findUserDayByDate(day.date);
-    
+
     // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
     final userNotes = <DateTime, Note>{};
     if (dayUser != null) {
@@ -401,14 +402,14 @@ class DayCardBuilder {
 
     // Tworzymy końcową listę notatek
     final allNotes = <Note>[];
-    
+
     // Dodajemy wszystkie timestampy do zbioru
     final allTimestamps = {...systemNotesByTime.keys, ...userNotes.keys};
-    
+
     // Iterujemy po wszystkich timestampach
     for (var timestamp in allTimestamps) {
       final userNote = userNotes[timestamp];
-      
+
       if (userNote != null) {
         // Jeśli jest notatka użytkownika
         if (userNote.note != null) {
@@ -470,20 +471,51 @@ class DayCardBuilder {
                     );
                   },
                   mouseCursor: SystemMouseCursors.click,
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        _createTextSpan(
-                          '${DateFormat('HH:mm').format(note.timestamp)} ',
-                          fontWeight: FontWeight.bold,
-                          color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            _createTextSpan(
+                              '${DateFormat('HH:mm').format(note.timestamp)} ',
+                              fontWeight: FontWeight.bold,
+                              color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                            ),
+                            _createTextSpan(
+                              note.note,
+                              color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                            ),
+                          ],
                         ),
-                        _createTextSpan(
-                          note.note,
-                          color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
-                        ),
+                      ),
+                      if (note.images.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        ...note.images.map((imageName) => Tooltip(
+                              message: 'Kliknij aby zobaczyć obrazek',
+                              child: MouseRegion(
+                                cursor: SystemMouseCursors.click,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    ImageDialog.show(
+                                      context: context,
+                                      controller: controller,
+                                      imageName: imageName,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                                    child: Icon(
+                                      Icons.image,
+                                      size: 16,
+                                      color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black54,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               )),
@@ -507,7 +539,8 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję z komentarzem użytkownika
-  static Widget _buildUserComment(BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
+  static Widget _buildUserComment(
+      BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
     // Pobieramy dane użytkownika dla tego dnia
     final dayUser = controller.findUserDayByDate(day.date);
     final comments = dayUser?.comments ?? '';
