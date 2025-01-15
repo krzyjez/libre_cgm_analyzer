@@ -300,4 +300,32 @@ class DayController extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Zmienia widoczność dnia
+  /// [date] - data dnia do zmiany
+  /// [hide] - true jeśli dzień ma być ukryty, false jeśli ma być widoczny
+  Future<bool> changeDayVisibility(DateTime date, bool hide) async {
+    if (_userInfo == null) {
+      _logger.error('Próba zmiany widoczności dnia bez danych użytkownika');
+      return false;
+    }
+
+    var dayUser = findUserDayByDate(date);
+    if (dayUser == null) {
+      _logger.error('Próba zmiany widoczności nieistniejącego dnia: ${date.toIso8601String()}');
+      return false;
+    }
+
+    dayUser.hidden = hide;
+
+    // Zapisz zmiany na serwerze
+    try {
+      await _apiService.saveUserData(_userInfo!);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _logger.error('Błąd podczas zapisywania danych na serwerze: $e');
+      return false;
+    }
+  }
 }

@@ -24,9 +24,11 @@ class Measurement {
   Measurement(this.timestamp, this.glucoseValue);
 }
 
+/// Dane pojedynczej notatki
 @JsonSerializable()
 class Note {
   final DateTime timestamp;
+  // tekst notatki
   String? note;
   // lista obrazków przypisanych do notatki
   List<String> images = [];
@@ -57,12 +59,12 @@ class DayUser {
   final List<Note> notes;
   String comments;
   // Jeśli true to nie wyswietlamy danego dnia gdyż dane są np. zafałszywane
-  bool hidden = false;
+  bool hidden;
 
   /// wartość o którą będziemy modyfikować wartości glukozy rysowane na wykresie
   /// to dosyć wygodne jeśli np. czytnik zawyża pomiary
   int offset = 0;
-  DayUser(this.date, {List<Note>? notes, String? comments, bool hidden = false})
+  DayUser(this.date, {List<Note>? notes, String? comments, this.hidden = false})
       : notes = notes ?? [],
         comments = comments ?? '';
 

@@ -18,15 +18,88 @@ class DayCardBuilder {
   /// Buduje widżet karty dla danego dnia
   /// To jest główny punkt wejścia - tworzy StatefulBuilder który pozwala na odświeżanie karty
   static Widget buildDayCard(BuildContext context, DayController controller, DayData day) {
-    // StatefulBuilder to specjalny widget który pozwala na lokalne zarządzanie stanem
-    // bez tworzenia osobnej klasy StatefulWidget
+    final dayUser = controller.findUserDayByDate(day.date);
+    final isHidden = dayUser?.hidden ?? false;
+
+    if (isHidden) {
+      return _buildHiddenDayCard(context, controller, day);
+    }
+
     return StatefulBuilder(
-      // builder to funkcja która będzie wywoływana za każdym razem gdy trzeba przerysować kartę
-      // setStateCallback to funkcja którą wywołujemy gdy chcemy wymusić przerysowanie
-      builder: (BuildContext context, StateSetter setStateCallback) {
-        // Delegujemy właściwe budowanie karty do osobnej metody
-        return _buildCardContent(context, controller, day, setStateCallback);
+      builder: (context, setState) {
+        return _buildCardContent(context, controller, day, dayUser, setState);
       },
+    );
+  }
+
+  /// Buduje uproszczony widok karty dla ukrytego dnia
+  static Widget _buildHiddenDayCard(BuildContext context, DayController controller, DayData day) {
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12.0),
+      ),
+      elevation: 8.0,
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(4.0),
+        ),
+        child: ListTile(
+          title: Text(
+            DateFormat('yyyy-MM-dd').format(day.date),
+            style: const TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: const Text(
+            'Dzień wyłączony z powodu błędnych pomiarów',
+            style: TextStyle(
+              color: Colors.black54,
+            ),
+          ),
+          trailing: IconButton(
+            icon: const Icon(Icons.restore),
+            tooltip: 'Przywróć wyświetlanie dnia',
+            onPressed: () async {
+              final result = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Przywrócić dzień?'),
+                  content: const Text(
+                    'Czy na pewno chcesz przywrócić wyświetlanie tego dnia? '
+                    'Wszystkie pomiary zostaną ponownie pokazane.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('Anuluj'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('Przywróć'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (result == true) {
+                final success = await controller.changeDayVisibility(day.date, false);
+                if (!success) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nie udało się przywrócić dnia'),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -39,30 +112,27 @@ class DayCardBuilder {
     BuildContext context,
     DayController controller,
     DayData day,
+    DayUser? dayUser,
     StateSetter setStateCallback,
   ) {
-    // Te zmienne są przeliczane na nowo przy każdym wywołaniu setStateCallback
-    final dayUser = controller.findUserDayByDate(day.date);
-    final offsetStr = dayUser?.offset != 0 ? ' (offset: ${dayUser?.offset})' : '';
-
-    // Zwracamy główny kontener z paddingiem
-    return Padding(
-      padding: const EdgeInsets.only(left: 10.0, top: 10.0, right: 10.0, bottom: 0.0),
-      // Tworzymy kartę (widget Card)
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Card(
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        // Układamy elementy w kolumnie (jeden pod drugim)
+        elevation: 8.0,
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Nagłówek karty (z offsetem)
-            _buildHeader(context, controller, day, offsetStr, setStateCallback),
-            // Odstęp
-            const SizedBox(height: 4.0),
+            _buildHeader(context, controller, day, dayUser, setStateCallback),
             // Główna zawartość (wykres itp.)
-            _buildWorkingArea(context, controller, day, setStateCallback),
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: _buildWorkingArea(context, controller, day, dayUser, setStateCallback),
+            ),
           ],
         ),
       ),
@@ -74,67 +144,103 @@ class DayCardBuilder {
     BuildContext context,
     DayController controller,
     DayData day,
-    String offsetStr,
+    DayUser? dayUser,
     StateSetter setStateCallback,
   ) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.only(
-        topLeft: Radius.circular(12.0),
-        topRight: Radius.circular(12.0),
-      ),
-      child: Container(
-        width: double.infinity,
-        color: Colors.green[900],
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}$offsetStr',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+    // Te zmienne są przeliczane na nowo przy każdym wywołaniu setStateCallback
+    final offsetStr = (dayUser?.offset != null && dayUser!.offset != 0) ? ' (offset: ${dayUser.offset})' : '';
+
+    return Container(
+      width: double.infinity,
+      color: Colors.green[900],
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}$offsetStr',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.comment, color: Colors.white),
+                tooltip: 'Dodaj komentarz',
+                onPressed: () => CommentDialog.show(
+                  context: context,
+                  controller: controller,
+                  date: day.date,
+                  setStateCallback: setStateCallback,
+                ),
               ),
-            ),
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.comment, color: Colors.white),
-                  tooltip: 'Dodaj komentarz',
-                  onPressed: () => CommentDialog.show(
+              IconButton(
+                icon: const Icon(Icons.edit, color: Colors.white),
+                tooltip: 'Ustaw offset',
+                onPressed: () => OffsetDialog.show(
+                  context: context,
+                  controller: controller,
+                  date: day.date,
+                  setStateCallback: setStateCallback,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.info_outline, color: Colors.white),
+                onPressed: () {
+                  String values = day.measurements
+                      .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                      .join('\n');
+                  MeasurementsDialog.show(
                     context: context,
-                    controller: controller,
-                    date: day.date,
-                    setStateCallback: setStateCallback,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, color: Colors.white),
-                  tooltip: 'Ustaw offset',
-                  onPressed: () => OffsetDialog.show(
+                    title: 'Pomiary',
+                    values: values,
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.white),
+                tooltip: 'Ukryj dzień z powodu błędnych pomiarów',
+                onPressed: () async {
+                  final result = await showDialog<bool>(
                     context: context,
-                    controller: controller,
-                    date: day.date,
-                    setStateCallback: setStateCallback,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.info_outline, color: Colors.white),
-                  onPressed: () {
-                    String values = day.measurements
-                        .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
-                        .join('\n');
-                    MeasurementsDialog.show(
-                      context: context,
-                      title: 'Pomiary',
-                      values: values,
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
-        ),
+                    builder: (context) => AlertDialog(
+                      title: const Text('Ukryć dzień?'),
+                      content: const Text(
+                        'Czy na pewno chcesz ukryć ten dzień? '
+                        'Zostanie on ukryty z powodu błędnych pomiarów i nie będzie wyświetlany w aplikacji.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Anuluj'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Ukryj'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (result == true) {
+                    final success = await controller.changeDayVisibility(day.date, true);
+                    if (!success) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Nie udało się ukryć dnia'),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -144,25 +250,23 @@ class DayCardBuilder {
     BuildContext context,
     DayController controller,
     DayData day,
+    DayUser? dayUser,
     StateSetter setStateCallback,
   ) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Komentarz użytkownika
-          _buildUserComment(context, controller, day, setStateCallback),
-          // wykres i statystyki
-          _buildChartAndStats(context, controller, day),
-          if (day.notes.isNotEmpty) _buildNotes(context, controller, day, setStateCallback),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Komentarz użytkownika
+        _buildUserComment(context, controller, day, dayUser, setStateCallback),
+        // wykres i statystyki
+        _buildChartAndStats(context, controller, day, dayUser),
+        if (day.notes.isNotEmpty) _buildNotes(context, controller, day, dayUser, setStateCallback),
+      ],
     );
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(BuildContext context, DayController controller, DayData day) {
+  static Widget _buildChartAndStats(BuildContext context, DayController controller, DayData day, DayUser? dayUser) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -382,9 +486,9 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję notatek.
-  static Widget _buildNotes(BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
+  static Widget _buildNotes(
+      BuildContext context, DayController controller, DayData day, DayUser? dayUser, StateSetter setStateCallback) {
     // Pobieramy notatki użytkownika dla tego dnia
-    final dayUser = controller.findUserDayByDate(day.date);
 
     // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
     final userNotes = <DateTime, Note>{};
@@ -540,9 +644,8 @@ class DayCardBuilder {
 
   /// Buduje sekcję z komentarzem użytkownika
   static Widget _buildUserComment(
-      BuildContext context, DayController controller, DayData day, StateSetter setStateCallback) {
+      BuildContext context, DayController controller, DayData day, DayUser? dayUser, StateSetter setStateCallback) {
     // Pobieramy dane użytkownika dla tego dnia
-    final dayUser = controller.findUserDayByDate(day.date);
     final comments = dayUser?.comments ?? '';
 
     if (comments.isEmpty) {

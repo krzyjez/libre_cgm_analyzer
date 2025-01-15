@@ -133,12 +133,13 @@ class _MyHomePageState extends State<MyHomePage> {
   /// - Parsuje dane CSV
   Future<void> _loadDataFromApi() async {
     try {
-      final (userData, csvData) = await _apiService.loadDataFromApi(defaultTreshold);
+      final (userInfo, csvData) = await _apiService.loadDataFromApi(defaultTreshold);
+      _logger.info('Wczytano dane z API - userInfo: $userInfo');
       setState(() {
         _fileName = 'Dane z serwera';
 
-        _dayController.userInfo = userData;
-        _csvParser.parseCsv(csvData, userData.treshold);
+        _dayController.userInfo = userInfo;
+        _csvParser.parseCsv(csvData, userInfo.treshold);
       });
     } catch (e) {
       _logger.error('Błąd podczas pobierania danych z API: $e');
@@ -168,32 +169,38 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-          title: Text('Libre CGM Analyzer v$appVersion'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.file_upload),
-              tooltip: 'Dodaj plik CSV',
-              onPressed: () => pickCsvFile(context),
-            ),
-          ],
-        ),
-        body: Center(
-          child: _fileName == null
-              ? const Text('Wybierz plik CSV')
-              : ListView.builder(
-                  itemCount: _csvParser.days.length,
-                  itemBuilder: (context, index) {
-                    final day = _csvParser.days[index];
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text(_fileName ?? 'Libre CGM Analyzer v$appVersion'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_upload),
+            tooltip: 'Dodaj plik CSV',
+            onPressed: () => pickCsvFile(context),
+          ),
+        ],
+      ),
+      body: ListenableBuilder(
+        listenable: _dayController,
+        builder: (context, _) {
+          return Center(
+            child: _fileName == null
+                ? const Text('Wybierz plik CSV')
+                : ListView.builder(
+                    itemCount: _csvParser.days.length,
+                    itemBuilder: (context, index) {
+                      final day = _csvParser.days[index];
 
-                    return DayCardBuilder.buildDayCard(
-                      context,
-                      _dayController,
-                      day,
-                    );
-                  },
-                ),
-        ));
+                      return DayCardBuilder.buildDayCard(
+                        context,
+                        _dayController,
+                        day,
+                      );
+                    },
+                  ),
+          );
+        },
+      ),
+    );
   }
 }

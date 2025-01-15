@@ -1,7 +1,13 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.23';
+const String appVersion = '4.0.24';
 
 /* Historia zmian:
+
+4.0.24 (2025-01-15)
+    Dodano możliwość ukrywania dni z błędnymi pomiarami:
+    - Przycisk kosza na belce karty dnia do ukrycia dnia
+    - Ukryte dni pokazywane jako szary pasek z datą
+    - Możliwość przywrócenia ukrytego dnia przyciskiem
 
 4.0.23 (2025-01-15)
     Ulepszono wyświetlanie obrazków w notatkach:
