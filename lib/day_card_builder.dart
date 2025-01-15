@@ -34,69 +34,55 @@ class DayCardBuilder {
 
   /// Buduje uproszczony widok karty dla ukrytego dnia
   static Widget _buildHiddenDayCard(BuildContext context, DayController controller, DayData day) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
-      elevation: 8.0,
+    return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(4.0),
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
         ),
-        child: ListTile(
-          title: Text(
-            DateFormat('yyyy-MM-dd').format(day.date),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          subtitle: const Text(
-            'Dzień wyłączony z powodu błędnych pomiarów',
-            style: TextStyle(
-              color: Colors.black54,
-            ),
-          ),
-          trailing: IconButton(
-            icon: const Icon(Icons.restore),
-            tooltip: 'Przywróć wyświetlanie dnia',
-            onPressed: () async {
-              final result = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Przywrócić dzień?'),
-                  content: const Text(
-                    'Czy na pewno chcesz przywrócić wyświetlanie tego dnia? '
-                    'Wszystkie pomiary zostaną ponownie pokazane.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Anuluj'),
+        elevation: 8.0,
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          color: Colors.grey[300],
+          padding: const EdgeInsets.all(10.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      DateFormat('yyyy-MM-dd').format(day.date),
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Przywróć'),
+                    const SizedBox(height: 4.0),
+                    const Text(
+                      'Dzień wyłączony z powodu błędnych pomiarów',
+                      style: TextStyle(
+                        color: Colors.black54,
+                      ),
                     ),
                   ],
                 ),
-              );
-
-              if (result == true) {
-                final success = await controller.changeDayVisibility(day.date, false);
-                if (!success) {
-                  if (context.mounted) {
+              ),
+              IconButton(
+                icon: const Icon(Icons.restore),
+                tooltip: 'Przywróć wyświetlanie dnia',
+                onPressed: () async {
+                  final success = await controller.changeDayVisibility(day.date, false);
+                  if (!success && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Nie udało się przywrócić dnia'),
                       ),
                     );
                   }
-                }
-              }
-            },
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -203,38 +189,13 @@ class DayCardBuilder {
                 icon: const Icon(Icons.delete, color: Colors.white),
                 tooltip: 'Ukryj dzień z powodu błędnych pomiarów',
                 onPressed: () async {
-                  final result = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Ukryć dzień?'),
-                      content: const Text(
-                        'Czy na pewno chcesz ukryć ten dzień? '
-                        'Zostanie on ukryty z powodu błędnych pomiarów i nie będzie wyświetlany w aplikacji.',
+                  final success = await controller.changeDayVisibility(day.date, true);
+                  if (!success && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Nie udało się ukryć dnia'),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          child: const Text('Anuluj'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          child: const Text('Ukryj'),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (result == true) {
-                    final success = await controller.changeDayVisibility(day.date, true);
-                    if (!success) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Nie udało się ukryć dnia'),
-                          ),
-                        );
-                      }
-                    }
+                    );
                   }
                 },
               ),

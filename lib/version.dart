@@ -1,7 +1,13 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.24';
+const String appVersion = '4.0.25';
 
 /* Historia zmian:
+
+4.0.25 (2025-01-15)
+    Poprawki wizualne dla ukrytych dni:
+    - Uproszczono wygląd ukrytych dni do pojedynczej szarej karty
+    - Usunięto zbędne potwierdzenia przy ukrywaniu/przywracaniu dni
+    - Ujednolicono marginesy i zaokrąglenia kart
 
 4.0.24 (2025-01-15)
     Dodano możliwość ukrywania dni z błędnymi pomiarami:
