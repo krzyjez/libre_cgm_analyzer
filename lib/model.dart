@@ -7,7 +7,7 @@ part 'model.g.dart';
 class ImageDto {
   /// Oryginalna nazwa pliku
   final String filename;
-  
+
   /// Bajty obrazka
   final Uint8List bytes;
 
@@ -27,7 +27,7 @@ class Measurement {
 @JsonSerializable()
 class Note {
   final DateTime timestamp;
-  final String? note;
+  String? note;
   // lista obrazków przypisanych do notatki
   List<String> images = [];
 
@@ -56,11 +56,13 @@ class DayUser {
   final DateTime date;
   final List<Note> notes;
   String comments;
+  // Jeśli true to nie wyswietlamy danego dnia gdyż dane są np. zafałszywane
+  bool hidden = false;
 
   /// wartość o którą będziemy modyfikować wartości glukozy rysowane na wykresie
   /// to dosyć wygodne jeśli np. czytnik zawyża pomiary
   int offset = 0;
-  DayUser(this.date, {List<Note>? notes, String? comments})
+  DayUser(this.date, {List<Note>? notes, String? comments, bool hidden = false})
       : notes = notes ?? [],
         comments = comments ?? '';
 

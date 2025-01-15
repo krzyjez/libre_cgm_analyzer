@@ -37,8 +37,33 @@ class Logger {
         await this.updateLogFile();
         const timestamp = new Date().toISOString();
         let logEntry = `[${timestamp}] ${type}: ${message}`;
+        
         if (data) {
-            logEntry += `\nData: ${JSON.stringify(data, null, 2)}\n`;
+            // Jeśli data jest stringiem i jest zbyt długi, ucinamy go
+            if (typeof data === 'string' && data.length > 1000) {
+                logEntry += `\nData: ${data.substring(0, 1000)}... (truncated)`;
+            }
+            // Jeśli data jest obiektem, serializujemy go z limitem głębokości
+            else {
+                const safeStringify = (obj, depth = 2) => {
+                    const seen = new Set();
+                    return JSON.stringify(obj, (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (seen.has(value)) return '[Circular]';
+                            seen.add(value);
+                            if (depth === 0) return '[Object]';
+                            return Object.fromEntries(
+                                Object.entries(value).map(([k, v]) => [k, safeStringify(v, depth - 1)])
+                            );
+                        }
+                        if (typeof value === 'string' && value.length > 1000) {
+                            return value.substring(0, 1000) + '... (truncated)';
+                        }
+                        return value;
+                    }, 2);
+                };
+                logEntry += `\nData: ${safeStringify(data)}\n`;
+            }
         }
         logEntry += '\n';
 

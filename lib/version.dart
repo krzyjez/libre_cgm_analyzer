@@ -1,7 +1,14 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.20';
+const String appVersion = '4.0.21';
 
 /* Historia zmian:
+
+4.0.21 (2025-01-15)
+- Naprawiono:
+  1. Błąd z zapisywaniem obrazków w notatkach:
+    - Dodano prawidłową serializację listy obrazków w klasie Note
+    - Obrazki są teraz poprawnie zachowywane w strukturze notatki
+    - Naprawiono problem z edycją notatek
 
 4.0.20 (2025-01-09)
 - Dodano:
@@ -34,10 +41,6 @@ const String appVersion = '4.0.20';
     - Responsywny układ siatki
 - Do zrobienia w następnej wersji:
   1. Podgląd obrazka w pełnym rozmiarze
-  2. Możliwość zmiany kolejności obrazków
-  3. Wskaźnik postępu przy uploadzie
-  4. Kompresja obrazków przed wysłaniem
-  5. Obsługa offline i synchronizacja
 
 
 4.0.19

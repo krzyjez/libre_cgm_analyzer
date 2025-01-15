@@ -51,7 +51,7 @@ class NoteDialog extends StatefulWidget {
 class _NoteDialogState extends State<NoteDialog> {
   /// Lista tymczasowych obrazków
   final List<ImageDto> _newImages = [];
-  
+
   /// Lista obrazków do usunięcia
   final List<String> _imagesToDelete = [];
 
@@ -61,7 +61,7 @@ class _NoteDialogState extends State<NoteDialog> {
   @override
   void initState() {
     super.initState();
-    
+
     // Używamy DateFormat zamiast _formatTimeOfDay w initState
     if (widget.originalNote != null) {
       timeController = TextEditingController(
@@ -69,7 +69,8 @@ class _NoteDialogState extends State<NoteDialog> {
       );
     } else if (widget.initialTime != null) {
       timeController = TextEditingController(
-        text: '${widget.initialTime!.hour.toString().padLeft(2, '0')}:${widget.initialTime!.minute.toString().padLeft(2, '0')}',
+        text:
+            '${widget.initialTime!.hour.toString().padLeft(2, '0')}:${widget.initialTime!.minute.toString().padLeft(2, '0')}',
       );
     } else {
       final now = TimeOfDay.now();
@@ -77,7 +78,7 @@ class _NoteDialogState extends State<NoteDialog> {
         text: '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}',
       );
     }
-    
+
     textController = TextEditingController(text: widget.originalNote?.note ?? '');
   }
 
@@ -125,10 +126,15 @@ class _NoteDialogState extends State<NoteDialog> {
         );
 
         // Tworzymy nową notatkę lub aktualizujemy istniejącą
-        final note = widget.originalNote ?? Note(timestamp, textController.text);
+        Note note;
         if (widget.originalNote != null) {
-          note.images.clear();
+          // Przy edycji tworzymy nową notatkę z aktualnym tekstem
+          note = Note(timestamp, textController.text);
+          // i kopiujemy do niej obrazki ze starej notatki
           note.images.addAll(widget.originalNote!.images);
+        } else {
+          // Przy tworzeniu nowej notatki po prostu ją tworzymy
+          note = Note(timestamp, textController.text);
         }
 
         // Zapisujemy notatkę wraz z obrazkami

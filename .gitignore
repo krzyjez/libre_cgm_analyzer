@@ -54,3 +54,6 @@ app.*.map.json
 **/.env.development.local
 **/.env.test.local
 **/.env.production.local
+
+# Uploaded images
+data_source/images/

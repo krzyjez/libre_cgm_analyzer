@@ -9,11 +9,13 @@ part of 'model.dart';
 Note _$NoteFromJson(Map<String, dynamic> json) => Note(
       DateTime.parse(json['timestamp'] as String),
       json['note'] as String?,
-    );
+    )..images =
+        (json['images'] as List<dynamic>).map((e) => e as String).toList();
 
 Map<String, dynamic> _$NoteToJson(Note instance) => <String, dynamic>{
       'timestamp': instance.timestamp.toIso8601String(),
       'note': instance.note,
+      'images': instance.images,
     };
 
 DayUser _$DayUserFromJson(Map<String, dynamic> json) => DayUser(
@@ -22,12 +24,14 @@ DayUser _$DayUserFromJson(Map<String, dynamic> json) => DayUser(
           ?.map((e) => Note.fromJson(e as Map<String, dynamic>))
           .toList(),
       comments: json['comments'] as String?,
+      hidden: json['hidden'] as bool? ?? false,
     )..offset = (json['offset'] as num).toInt();
 
 Map<String, dynamic> _$DayUserToJson(DayUser instance) => <String, dynamic>{
       'date': instance.date.toIso8601String(),
       'notes': instance.notes,
       'comments': instance.comments,
+      'hidden': instance.hidden,
       'offset': instance.offset,
     };
 

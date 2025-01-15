@@ -5,6 +5,7 @@ const fsPromises = require('fs').promises;
 const path = require('path');
 const logger = require('./logger');
 const multer = require('multer');
+const util = require('util');
 
 const app = express();
 const port = 8000;
@@ -64,6 +65,8 @@ app.use(express.json());
 
 // Middleware do logowania wszystkich żądań
 app.use((req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  
   // Logujemy podstawowe informacje o żądaniu
   logger.info('REQUEST:', {
     method: req.method,
@@ -72,29 +75,10 @@ app.use((req, res, next) => {
   });
 
   // Dla multipart/form-data logujemy tylko metadane
-  if (req.headers['content-type']?.includes('multipart/form-data')) {
-    let data = '';
-    req.on('data', chunk => {
-      // Zbieramy dane, ale nie logujemy ich
-      data += chunk;
-    });
-    req.on('end', () => {
-      // Wyciągamy tylko nazwy pól z formularza, bez zawartości
-      const boundary = req.headers['content-type'].split('boundary=')[1];
-      const parts = data.toString().split('--' + boundary);
-      const fields = parts
-        .filter(part => part && part !== '--\r\n')
-        .map(part => {
-          const match = part.match(/name="([^"]+)"/);
-          return match ? match[1] : null;
-        })
-        .filter(name => name);
-
-      logger.info('Multipart form data - pola:', {
-        fields,
-        contentLength: req.headers['content-length']
-      });
-    });
+  if (contentType.includes('multipart/form-data')) {
+    logger.info('Multipart form data request');
+  } else if (contentType.includes('application/json')) {
+    logger.info('JSON data:', req.body);
   }
 
   next();
@@ -196,9 +180,8 @@ app.get('/user-data', async (req, res) => {
 // Zapisywanie danych użytkownika
 app.post('/user-data', async (req, res) => {
   try {
-    const userData = req.body;
-    logger.info('Zapisywanie danych użytkownika:', userData);
-    await fsPromises.writeFile(userDataPath, JSON.stringify(userData, null, 2));
+    logger.info('json: ', JSON.stringify(req.body));
+    await fsPromises.writeFile(userDataPath, JSON.stringify(req.body));
     res.json({ message: 'Dane użytkownika zostały zapisane' });
   } catch (error) {
     logger.error('Błąd podczas zapisywania danych użytkownika:', error);

@@ -268,24 +268,33 @@ class DayController extends ChangeNotifier {
     List<String> imagesToDelete,
   ) async {
     try {
+      _logger.info('Start saveNoteWithImages:');
+      _logger.info('- Aktualne obrazki w notatce: ${note.images}');
+      _logger.info('- Obrazki do usunięcia: $imagesToDelete');
+      _logger.info('- Nowe obrazki do dodania: ${newImages.map((e) => e.filename).toList()}');
+
       // 1. Usuwamy oznaczone obrazki
       for (final filename in imagesToDelete) {
         await deleteImage(filename);
       }
 
-      // 2. Wysyłamy nowe obrazki
+      // 2. Wysyłamy nowe obrazki na serwer
       final uploadedImages = <String>[];
       for (final image in newImages) {
         final filename = await uploadImage(image);
         uploadedImages.add(filename);
       }
+      _logger.info('- Nazwy uploadowanych obrazków: $uploadedImages');
 
       // 3. Aktualizujemy listę obrazków w notatce
-      final existingImages = note.images.where((img) => !imagesToDelete.contains(img)).toList();
-      note.images = [...existingImages, ...uploadedImages];
+      note.images.removeWhere((img) => imagesToDelete.contains(img)); // Usuwamy obrazki oznaczone do usunięcia
+      note.images.addAll(uploadedImages); // Dodajemy nowe obrazki
+      _logger.info('- Finalna lista obrazków w notatce: ${note.images}');
 
       // 4. Zapisujemy notatkę
-      return await saveUserNote(date, note);
+      final success = await saveUserNote(date, note);
+      _logger.info('- Zapis notatki: ${success ? 'sukces' : 'błąd'}');
+      return success;
     } catch (e) {
       _logger.error('Błąd podczas zapisywania notatki z obrazkami: $e');
       return false;
