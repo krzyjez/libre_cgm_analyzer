@@ -1,7 +1,14 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.25';
+const String appVersion = '4.0.26';
 
 /* Historia zmian:
+
+4.0.26 (2025-01-16)
+    Ulepszenia wykresu w karcie dnia:
+    - Przeniesiono logikę wykresu do osobnego pliku day_chart_builder.dart
+    - Dodano nową serię danych pokazującą punkty maksymalne w okresach przekroczenia
+    - Punkty maksymalne są wyświetlane na czerwono z wartością punktową
+    - Zoptymalizowano kod i poprawiono czytelność implementacji wykresu
 
 4.0.25 (2025-01-15)
     Poprawki wizualne dla ukrytych dni:
