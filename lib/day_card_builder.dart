@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
-import 'chart_data.dart';
 import 'model.dart';
 import 'day_controller.dart';
 import 'dialogs/comment_dialog.dart';

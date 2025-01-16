@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\LibreCgmAnalyzer.Api.props" />
+</Project>
