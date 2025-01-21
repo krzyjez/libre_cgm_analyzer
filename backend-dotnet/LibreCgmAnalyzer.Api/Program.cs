@@ -26,7 +26,16 @@ try
   // Konfiguracja Swagger
   builder.Services.AddSwaggerGen(c =>
   {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "LibreCgmAnalyzer API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { 
+      Title = "LibreCgmAnalyzer API", 
+      Version = "v1",
+      Description = "API do analizy danych z LibreCGM",
+      Contact = new OpenApiContact
+      {
+        Name = "Krzysztof Jeziorny",
+        Email = "krzysztof.jeziorny@gmail.com"
+      }
+    });
   });
 
   // Rejestracja BlobStorageService
