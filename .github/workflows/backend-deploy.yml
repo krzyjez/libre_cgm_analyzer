@@ -2,7 +2,7 @@ name: Deploy Backend to Azure
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     paths:
       - 'backend-dotnet/**'
       - '.github/workflows/backend-deploy.yml'
