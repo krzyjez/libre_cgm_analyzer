@@ -1,3 +1,6 @@
+import 'package:logging/logging.dart';
+import 'package:flutter/foundation.dart';
+
 enum LogLevel { debug, info, warning, error }
 
 class Logger {
@@ -30,6 +33,7 @@ class Logger {
 
     final timestamp = DateTime.now().toIso8601String();
     final prefix = level.toString().split('.').last.toUpperCase();
-    print('$timestamp [$prefix] $tag: $message');
+    // Używamy debugPrint zamiast print - jest bezpieczniejszy w produkcji
+    debugPrint('$timestamp [$prefix] $tag: $message');
   }
 }

@@ -9,7 +9,6 @@ import 'api_service.dart';
 import 'csv_parser.dart';
 import 'day_controller.dart';
 import 'day_card_builder.dart';
-import 'model.dart';
 import 'version.dart';
 
 /// Domyślny próg dla pomiarów glukozy (w mg/dL)
