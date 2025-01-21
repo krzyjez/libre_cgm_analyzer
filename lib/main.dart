@@ -67,6 +67,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final _logger = Logger('MyHomePage');
   final _apiService = ApiService();
   late final DayController _dayController;
+  String _apiVersion = '';
 
   /// Pozwala użytkownikowi wybrać plik CSV z danymi
   ///
@@ -184,11 +185,23 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  Future<void> _loadApiVersion() async {
+    try {
+      final version = await _apiService.getApiVersion();
+      setState(() {
+        _apiVersion = version;
+      });
+    } catch (e) {
+      // Błąd pobierania wersji - zostawiamy pustą
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _dayController = DayController(_apiService, defaultTreshold);
     _loadDataFromApi(); // Próbujemy najpierw pobrać z API
+    _loadApiVersion();
   }
 
   @override
@@ -206,7 +219,15 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(title),
+        title: Row(
+          children: [
+            Text(title),
+            const SizedBox(width: 10),
+            Text('API: $_apiVersion', 
+              style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_upload),

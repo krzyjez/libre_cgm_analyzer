@@ -23,12 +23,15 @@ try
   builder.Services.AddControllers();
   builder.Services.AddEndpointsApiExplorer();
 
+  // Konfiguracja CORS
+  builder.Services.AddCors();
+
   // Konfiguracja Swagger
   builder.Services.AddSwaggerGen(c =>
   {
-    c.SwaggerDoc("v1", new OpenApiInfo { 
+    c.SwaggerDoc(LibreCgmAnalyzer.Api.Constants.ApiVersion, new OpenApiInfo { 
       Title = "LibreCgmAnalyzer API", 
-      Version = "v1.1",
+      Version = LibreCgmAnalyzer.Api.Constants.ApiVersion,
       Description = "API do analizy danych z LibreCGM",
       Contact = new OpenApiContact
       {
@@ -62,17 +65,6 @@ try
     }
   });
 
-  // Konfiguracja CORS
-  builder.Services.AddCors(options =>
-  {
-    options.AddPolicy("AllowAll", builder =>
-    {
-      builder.AllowAnyOrigin()
-             .AllowAnyMethod()
-             .AllowAnyHeader();
-    });
-  });
-
   var app = builder.Build();
 
   // Konfiguracja middleware
@@ -80,11 +72,18 @@ try
   app.UseSwagger();
   app.UseSwaggerUI(c => 
   {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "LibreCgmAnalyzer API v1");
+    c.SwaggerEndpoint($"/swagger/{LibreCgmAnalyzer.Api.Constants.ApiVersion}/swagger.json", $"LibreCgmAnalyzer API {LibreCgmAnalyzer.Api.Constants.ApiVersion}");
     c.RoutePrefix = string.Empty; // Swagger UI będzie dostępny pod root URL
   });
 
-  app.UseCors("AllowAll");
+  // Włączenie CORS
+  app.UseCors(x => x
+      .AllowAnyMethod()
+      .AllowAnyHeader()
+      .SetIsOriginAllowed(origin => true) // allow any origin
+      .AllowCredentials());
+
+  app.UseHttpsRedirection();
   app.UseAuthorization();
   app.MapControllers();
 

@@ -170,4 +170,19 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// Pobiera wersję API
+  Future<String> getApiVersion() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/version'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['version'];
+      }
+      throw Exception('Failed to load API version');
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania wersji API: $e');
+      rethrow;
+    }
+  }
 }

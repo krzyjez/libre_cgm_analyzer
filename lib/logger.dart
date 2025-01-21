@@ -1,4 +1,3 @@
-import 'package:logging/logging.dart';
 import 'package:flutter/foundation.dart';
 
 enum LogLevel { debug, info, warning, error }
