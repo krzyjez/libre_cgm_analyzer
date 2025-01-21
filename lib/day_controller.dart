@@ -271,7 +271,7 @@ class DayController extends ChangeNotifier {
       _logger.info('Start saveNoteWithImages:');
       _logger.info('- Aktualne obrazki w notatce: ${note.images}');
       _logger.info('- Obrazki do usunięcia: $imagesToDelete');
-      _logger.info('- Nowe obrazki do dodania: ${newImages.map((e) => e.filename).toList()}');
+      _logger.info('- Nowe obrazki do dodania: ${newImages.length}');
 
       // 1. Usuwamy oznaczone obrazki
       for (final filename in imagesToDelete) {

@@ -58,17 +58,6 @@ class _NoteDialogState extends State<NoteDialog> {
   late TextEditingController timeController;
   late TextEditingController textController;
 
-  /// Generuje unikalną nazwę pliku w formacie: YYYY-MM-DD_HH-MM-SS_XXXXX.ext
-  /// gdzie XXXXX to 5 losowych znaków
-  String _generateUniqueFilename(String originalFilename) {
-    final now = DateTime.now();
-    final date = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final time = '${now.hour.toString().padLeft(2, '0')}-${now.minute.toString().padLeft(2, '0')}-${now.second.toString().padLeft(2, '0')}';
-    final random = List.generate(5, (_) => '0123456789abcdef'[DateTime.now().microsecond % 16]).join();
-    final extension = originalFilename.split('.').last.toLowerCase();
-    return '${date}_${time}_$random.$extension';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -233,7 +222,6 @@ class _NoteDialogState extends State<NoteDialog> {
                               final file = result.files.first;
                               setState(() {
                                 _newImages.add(ImageDto(
-                                  filename: _generateUniqueFilename(file.name),
                                   bytes: file.bytes!,
                                 ));
                               });

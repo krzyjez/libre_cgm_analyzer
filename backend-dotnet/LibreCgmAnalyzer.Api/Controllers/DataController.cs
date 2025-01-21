@@ -1,37 +1,27 @@
 using Microsoft.AspNetCore.Mvc;
 using LibreCgmAnalyzer.Api.Services;
-using System;
-using System.IO;
+
 
 namespace LibreCgmAnalyzer.Api.Controllers;
 
 [ApiController]
 [Route("api")]
-public class DataController : ControllerBase
+public class DataController(IBlobStorageService blobStorageService, ILogger<DataController> logger) : ControllerBase
 {
-  private readonly ILogger<DataController> _logger;
-  private readonly BlobStorageService _blobStorageService;
   private const string DataContainer = "data";
   private const string ImagesContainer = "images";
-
-  public DataController(ILogger<DataController> logger, BlobStorageService blobStorageService)
-    : base()
-  {
-    _logger = logger;
-    _blobStorageService = blobStorageService;
-  }
 
   [HttpGet("csv-data")]
   public async Task<IActionResult> GetCsvData()
   {
     try
     {
-      var stream = await _blobStorageService.GetFileAsync(DataContainer, "data.csv");
+      var stream = await blobStorageService.GetFileAsync(DataContainer, "data.csv");
       return File(stream, "text/csv");
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas pobierania pliku CSV");
+      logger.LogError(ex, "Błąd podczas pobierania pliku CSV");
       return NotFound();
     }
   }
@@ -49,12 +39,12 @@ public class DataController : ControllerBase
       await writer.FlushAsync();
       stream.Position = 0;
       
-      await _blobStorageService.SaveFileAsync(DataContainer, "data.csv", stream);
+      await blobStorageService.SaveFileAsync(DataContainer, "data.csv", stream);
       return Ok();
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas zapisywania pliku CSV");
+      logger.LogError(ex, "Błąd podczas zapisywania pliku CSV");
       return BadRequest();
     }
   }
@@ -64,13 +54,24 @@ public class DataController : ControllerBase
   {
     try
     {
-      var stream = await _blobStorageService.GetFileAsync(DataContainer, "user_data.json");
-      return File(stream, "application/json");
+      Stream? stream;
+      try
+      {
+        stream = await blobStorageService.GetFileAsync(DataContainer, "user_data.json");
+      }
+      catch (Exception)
+      {
+        // Jeśli nie ma pliku, zwracamy pusty obiekt JSON
+        logger.LogInformation("Brak danych użytkownika - zwracam pusty obiekt");
+        return Content("{}", "application/json; charset=utf-8");
+      }
+      
+      return File(stream, "application/json; charset=utf-8");
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas pobierania danych użytkownika");
-      return NotFound();
+      logger.LogError(ex, "Błąd podczas pobierania danych użytkownika");
+      return BadRequest();
     }
   }
 
@@ -82,17 +83,17 @@ public class DataController : ControllerBase
       using var reader = new StreamReader(Request.Body);
       var content = await reader.ReadToEndAsync();
       using var stream = new MemoryStream();
-      using var writer = new StreamWriter(stream);
+      using var writer = new StreamWriter(stream, encoding: System.Text.Encoding.UTF8);
       await writer.WriteAsync(content);
       await writer.FlushAsync();
       stream.Position = 0;
       
-      await _blobStorageService.SaveFileAsync(DataContainer, "user_data.json", stream);
+      await blobStorageService.SaveFileAsync(DataContainer, "user_data.json", stream);
       return Ok();
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas zapisywania danych użytkownika");
+      logger.LogError(ex, "Błąd podczas zapisywania danych użytkownika");
       return BadRequest();
     }
   }
@@ -106,13 +107,14 @@ public class DataController : ControllerBase
         return BadRequest("Brak pliku");
 
       using var stream = file.OpenReadStream();
-      var fileName = $"{DateTime.UtcNow:yyyyMMddHHmmss}_{file.FileName}";
-      await _blobStorageService.SaveFileAsync(ImagesContainer, fileName, stream);
-      return Ok(new { fileName });
+      var myFilename = $"{DateTime.UtcNow:yyyyMMddHHmmss}_{file.FileName}";
+      await blobStorageService.SaveFileAsync(ImagesContainer, myFilename, stream);
+      
+      return Ok(new { filename = myFilename });
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas uploadowania obrazka");
+      logger.LogError(ex, "Błąd podczas uploadowania obrazka");
       return BadRequest();
     }
   }
@@ -122,12 +124,12 @@ public class DataController : ControllerBase
   {
     try
     {
-      await _blobStorageService.DeleteFileAsync(ImagesContainer, fileName);
+      await blobStorageService.DeleteFileAsync(ImagesContainer, fileName);
       return Ok();
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas usuwania obrazka");
+      logger.LogError(ex, "Błąd podczas usuwania obrazka");
       return BadRequest();
     }
   }
@@ -137,12 +139,25 @@ public class DataController : ControllerBase
   {
     try
     {
-      var stream = await _blobStorageService.GetFileAsync(ImagesContainer, fileName);
-      return File(stream, "image/jpeg"); // lub "image/png" w zależności od typu obrazka
+      var stream = await blobStorageService.GetFileAsync(ImagesContainer, fileName);
+      
+      // Określamy Content-Type na podstawie rozszerzenia pliku
+      string contentType = "image/jpeg"; // domyślnie
+      var extension = Path.GetExtension(fileName).ToLower();
+      if (extension == ".png")
+      {
+        contentType = "image/png";
+      }
+      else if (extension == ".gif")
+      {
+        contentType = "image/gif";
+      }
+      
+      return File(stream, contentType);
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Błąd podczas pobierania obrazka");
+      logger.LogError(ex, "Błąd podczas pobierania obrazka");
       return NotFound();
     }
   }

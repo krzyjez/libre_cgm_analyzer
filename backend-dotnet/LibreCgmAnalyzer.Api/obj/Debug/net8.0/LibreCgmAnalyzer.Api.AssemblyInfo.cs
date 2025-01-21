@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LibreCgmAnalyzer.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+46ecd54b8f297034c1b1d48e5291e835cef652cb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0fff8ddae3ce08e9987c1d8bac9f3bc2d4d70c47")]
 [assembly: System.Reflection.AssemblyProductAttribute("LibreCgmAnalyzer.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LibreCgmAnalyzer.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

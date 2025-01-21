@@ -5,14 +5,10 @@ part 'model.g.dart';
 
 /// Reprezentuje obrazek przed wysłaniem na serwer
 class ImageDto {
-  /// Oryginalna nazwa pliku
-  final String filename;
-
   /// Bajty obrazka
   final Uint8List bytes;
 
   const ImageDto({
-    required this.filename,
     required this.bytes,
   });
 }

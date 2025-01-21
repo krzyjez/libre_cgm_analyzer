@@ -1,7 +1,15 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.26';
+const String appVersion = '4.0.27';
 
 /* Historia zmian:
+
+4.0.27 (2025-01-21)
+    Migracja backendu na .NET i Azure:
+    - Przepisano backend z Pythona na .NET 8.0
+    - Przeniesiono storage z Azurite na Azure Blob Storage
+    - Dodano obsługę błędów sieciowych
+    - Ulepszono obsługę danych użytkownika
+    - Przygotowano aplikację do hostowania w Azure App Service
 
 4.0.26 (2025-01-16)
     Ulepszenia wykresu w karcie dnia:

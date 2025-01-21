@@ -1,71 +1,70 @@
 using Azure.Storage.Blobs;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
-namespace LibreCgmAnalyzer.Api.Services;
-
-public class BlobStorageService
+namespace LibreCgmAnalyzer.Api.Services
 {
-  private readonly BlobServiceClient _blobServiceClient;
-  private readonly ILogger<BlobStorageService> _logger;
-  private const string DataContainer = "data";
-  private const string ImagesContainer = "images";
-
-  public BlobStorageService(IConfiguration configuration, ILogger<BlobStorageService> logger)
-  {
-    _logger = logger;
-    var connectionString = configuration["AzureStorage:ConnectionString"] 
-      ?? throw new ArgumentNullException(nameof(configuration), "AzureStorage:ConnectionString not configured");
-    _blobServiceClient = new BlobServiceClient(connectionString);
-  }
-
-  public async Task InitializeAsync()
-  {
-    // Inicjalizacja kontenera data
-    var dataContainerClient = _blobServiceClient.GetBlobContainerClient(DataContainer);
-    if (!await dataContainerClient.ExistsAsync())
+    public class BlobStorageService : IBlobStorageService
     {
-      await dataContainerClient.CreateAsync();
-      _logger.LogInformation("Utworzono kontener {Container}", DataContainer);
-    }
-    else
-    {
-      _logger.LogInformation("Kontener {Container} już istnieje", DataContainer);
-    }
+        private readonly BlobServiceClient _blobServiceClient;
+        private readonly ILogger<BlobStorageService> _logger;
+        private const string DataContainer = "data";
+        private const string ImagesContainer = "images";
 
-    // Inicjalizacja kontenera images
-    var imagesContainerClient = _blobServiceClient.GetBlobContainerClient(ImagesContainer);
-    if (!await imagesContainerClient.ExistsAsync())
-    {
-      await imagesContainerClient.CreateAsync();
-      _logger.LogInformation("Utworzono kontener {Container}", ImagesContainer);
+        public BlobStorageService(string connectionString, ILogger<BlobStorageService> logger)
+        {
+            _logger = logger;
+            _blobServiceClient = new BlobServiceClient(connectionString);
+        }
+
+        public async Task InitializeAsync()
+        {
+            // Inicjalizacja kontenera data
+            var dataContainerClient = _blobServiceClient.GetBlobContainerClient(DataContainer);
+            if (!await dataContainerClient.ExistsAsync())
+            {
+                await dataContainerClient.CreateAsync();
+                _logger.LogInformation("Utworzono kontener {Container}", DataContainer);
+            }
+            else
+            {
+                _logger.LogInformation("Kontener {Container} już istnieje", DataContainer);
+            }
+
+            // Inicjalizacja kontenera images
+            var imagesContainerClient = _blobServiceClient.GetBlobContainerClient(ImagesContainer);
+            if (!await imagesContainerClient.ExistsAsync())
+            {
+                await imagesContainerClient.CreateAsync();
+                _logger.LogInformation("Utworzono kontener {Container}", ImagesContainer);
+            }
+            else
+            {
+                _logger.LogInformation("Kontener {Container} już istnieje", ImagesContainer);
+            }
+        }
+
+        public async Task<Stream> GetFileAsync(string containerName, string fileName)
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            return await blobClient.OpenReadAsync();
+        }
+
+        public async Task SaveFileAsync(string containerName, string fileName, Stream content)
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            await blobClient.UploadAsync(content, true);
+        }
+
+        public async Task DeleteFileAsync(string containerName, string fileName)
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            var blobClient = containerClient.GetBlobClient(fileName);
+            await blobClient.DeleteIfExistsAsync();
+        }
     }
-    else
-    {
-      _logger.LogInformation("Kontener {Container} już istnieje", ImagesContainer);
-    }
-  }
-
-  public async Task<Stream> GetFileAsync(string container, string fileName)
-  {
-    var containerClient = _blobServiceClient.GetBlobContainerClient(container);
-    var blobClient = containerClient.GetBlobClient(fileName);
-    return await blobClient.OpenReadAsync();
-  }
-
-  public async Task SaveFileAsync(string container, string fileName, Stream content)
-  {
-    var containerClient = _blobServiceClient.GetBlobContainerClient(container);
-    var blobClient = containerClient.GetBlobClient(fileName);
-    await blobClient.UploadAsync(content, true);
-  }
-
-  public async Task DeleteFileAsync(string container, string fileName)
-  {
-    var containerClient = _blobServiceClient.GetBlobContainerClient(container);
-    var blobClient = containerClient.GetBlobClient(fileName);
-    await blobClient.DeleteIfExistsAsync();
-  }
 }

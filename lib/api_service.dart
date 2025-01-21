@@ -6,7 +6,7 @@ import 'logger.dart';
 import 'model.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://localhost:8000';
+  static const _baseUrl = 'http://localhost:5000/api';
   final _logger = Logger('ApiService');
 
   /// Pobiera dane debugowe z pliku
@@ -87,29 +87,18 @@ class ApiService {
       final uri = Uri.parse('$_baseUrl/images');
       final request = http.MultipartRequest('POST', uri);
 
-      // Określamy typ MIME na podstawie rozszerzenia pliku
-      String contentType = 'image/jpeg'; // domyślnie
-      if (image.filename.toLowerCase().endsWith('.png')) {
-        contentType = 'image/png';
-      } else if (image.filename.toLowerCase().endsWith('.gif')) {
-        contentType = 'image/gif';
-      }
-
-      // Dodajemy plik do formularza z określonym typem MIME
+      // Dodajemy plik do formularza
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
           image.bytes,
-          filename: image.filename,
-          contentType: MediaType.parse(contentType),
+          filename: 'image.png', // Dodajemy nazwę pliku
+          contentType: MediaType.parse('image/png'), // Zakładamy PNG, serwer i tak sprawdzi prawdziwy typ
         ),
       );
 
-      // Dodajemy dodatkowe pola formularza
-      request.fields['filename'] = image.filename;
-
       _logger.info(
-          'Wysyłanie żądania: uri=${uri.toString()}, filename=${image.filename}, size=${image.bytes.length}, contentType=$contentType');
+          'Wysyłanie żądania: uri=${uri.toString()}, size=${image.bytes.length}');
 
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
@@ -163,19 +152,21 @@ class ApiService {
     }
   }
 
-  /// Pobiera listę dostępnych obrazków
-  Future<List<String>> getImages() async {
+  /// Zapisuje dane CSV na serwerze
+  Future<void> saveCsvData(String csvContent) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/images'));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final images = List<String>.from(data['images']);
-        _logger.info('Pobrano listę ${images.length} obrazków');
-        return images;
+      final response = await http.post(
+        Uri.parse('$_baseUrl/csv-data'),
+        headers: {'Content-Type': 'text/plain'},
+        body: csvContent,
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to save CSV data');
       }
-      throw Exception('Błąd podczas pobierania listy obrazków');
+      _logger.info('Zapisano dane CSV na serwerze');
     } catch (e) {
-      _logger.error('Błąd podczas pobierania listy obrazków: $e');
+      _logger.error('Błąd podczas zapisywania danych CSV: $e');
       rethrow;
     }
   }

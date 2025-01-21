@@ -3,12 +3,14 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
-import 'csv_parser.dart';
-import 'day_card_builder.dart';
+import 'package:intl/intl.dart';
 import 'logger.dart';
 import 'api_service.dart';
-import 'version.dart';
+import 'csv_parser.dart';
 import 'day_controller.dart';
+import 'day_card_builder.dart';
+import 'model.dart';
+import 'version.dart';
 
 /// Domyślny próg dla pomiarów glukozy (w mg/dL)
 const defaultTreshold = 140;
@@ -69,8 +71,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   /// Pozwala użytkownikowi wybrać plik CSV z danymi
   ///
-  /// Używa file_picker do wyboru pliku, następnie parsuje jego zawartość
-  /// i aktualizuje stan aplikacji
+  /// Używa file_picker do wyboru pliku, następnie wysyła go na serwer
+  /// i dopiero po potwierdzeniu zapisu wyświetla dane
   Future<void> pickCsvFile(BuildContext context) async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -82,24 +84,47 @@ class _MyHomePageState extends State<MyHomePage> {
         final fileBytes = result.files.first.bytes;
         if (fileBytes != null) {
           final csvContent = utf8.decode(fileBytes);
-          setState(() {
-            _fileName = result.files.first.name;
-            _csvParser.parseCsv(csvContent, defaultTreshold);
-          });
 
-          // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
-          if (!context.mounted) return;
+          try {
+            // Najpierw próbujemy zapisać na serwerze
+            await _apiService.saveCsvData(csvContent);
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Wczytano plik: ${result.files.first.name}')),
-          );
+            // Tylko jeśli zapis się udał, parsujemy i wyświetlamy dane
+            setState(() {
+              _csvParser.parseCsv(csvContent, defaultTreshold);
+              _fileName = 'Dane z serwera'; // Dodajemy nazwę pliku do stanu
+            });
+
+            // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
+            if (!context.mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Zapisano plik na serwerze'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } catch (e) {
+            _logger.error('Błąd podczas zapisywania na serwerze: $e');
+            if (!context.mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Nie udało się zapisać pliku na serwerze. Spróbuj ponownie.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       }
     } catch (e) {
       _logger.error('Błąd podczas wybierania pliku: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Błąd podczas wczytywania pliku: $e')),
+          SnackBar(
+            content: Text('Błąd podczas wybierania pliku: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -137,16 +162,17 @@ class _MyHomePageState extends State<MyHomePage> {
       _logger.info('Wczytano dane z API - userInfo: $userInfo');
       setState(() {
         _fileName = 'Dane z serwera';
-
         _dayController.userInfo = userInfo;
-        _csvParser.parseCsv(csvData, userInfo.treshold);
+        if (csvData.isNotEmpty) {
+          _csvParser.parseCsv(csvData, userInfo.treshold);
+        }
       });
     } catch (e) {
       _logger.error('Błąd podczas pobierania danych z API: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Nie udało się pobrać danych z serwera. Spróbuj ponownie później.'),
+            content: Text('Na serwerze brak danych glukozy. Wgraj plik CSV. (przycisk w prawym górnym rogu)'),
             backgroundColor: Colors.red,
             action: SnackBarAction(
               label: 'Ponów',
@@ -168,10 +194,20 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Przygotowanie tytułu z podsumowaniem danych
+    String title = 'Libre CGM Analyzer v$appVersion';
+    if (_csvParser.days.isNotEmpty) {
+      final daysCount = _csvParser.days.length;
+      final lastDay = _csvParser.days.last;
+      final dateFormat = DateFormat('dd.MM.yyyy');
+      final lastDate = dateFormat.format(lastDay.date);
+      title = '$daysCount dni (ostatni pomiar: $lastDate)';
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(_fileName ?? 'Libre CGM Analyzer v$appVersion'),
+        title: Text(title),
         actions: [
           IconButton(
             icon: const Icon(Icons.file_upload),

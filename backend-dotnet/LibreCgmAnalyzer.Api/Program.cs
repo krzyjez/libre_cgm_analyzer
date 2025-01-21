@@ -3,7 +3,7 @@ using Serilog.Events;
 using LibreCgmAnalyzer.Api.Services;
 using Microsoft.OpenApi.Models;
 
-
+// Konfiguracja Serilog
 Log.Logger = new LoggerConfiguration()
   .MinimumLevel.Debug()
   .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
@@ -29,8 +29,14 @@ try
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "LibreCgmAnalyzer API", Version = "v1" });
   });
 
-  // Dodanie BlobStorageService
-  builder.Services.AddScoped<BlobStorageService>();
+  // Rejestracja BlobStorageService
+  builder.Services.AddSingleton<IBlobStorageService>(sp =>
+  {
+    var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") 
+        ?? builder.Configuration["AzureStorage:ConnectionString"]
+        ?? throw new InvalidOperationException("Connection string not found");
+    return new BlobStorageService(connectionString, sp.GetRequiredService<ILogger<BlobStorageService>>());
+  });
 
   // Konfiguracja CORS
   builder.Services.AddCors(options =>
@@ -61,7 +67,7 @@ try
   // Inicjalizacja kontenerów Blob Storage
   using (var scope = app.Services.CreateScope())
   {
-    var blobService = scope.ServiceProvider.GetRequiredService<BlobStorageService>();
+    var blobService = scope.ServiceProvider.GetRequiredService<IBlobStorageService>();
     await blobService.InitializeAsync();
   }
 
