@@ -37,10 +37,18 @@ jobs:
         with:
           flutter-version: '3.16.5'
           channel: 'stable'
+      - name: Check Flutter version
+        run: flutter --version
       - name: Get dependencies
-        run: flutter pub get
+        run: |
+          flutter doctor -v
+          flutter pub get
       - name: Build web
-        run: flutter build web --release
+        run: |
+          flutter config --enable-web
+          flutter build web --release --verbose
+      - name: List build output
+        run: ls -la build/web
       - name: Build And Deploy
         id: builddeploy
         uses: Azure/static-web-apps-deploy@v1
