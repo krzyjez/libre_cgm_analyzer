@@ -5,10 +5,10 @@ on:
     branches: [ "main" ]
 
 env:
-  AZURE_WEBAPP_NAME: libre-cgm-analyzer-api-e7bsfghgdtdscka2
+  AZURE_WEBAPP_NAME: libre-cgm-analyzer-api           # Nazwa App Service w Azure
   AZURE_WEBAPP_PACKAGE_PATH: './backend-dotnet/LibreCgmAnalyzer.Api'      # Ścieżka do projektu API
-  DOTNET_VERSION: '8.0.x'                      # Wersja .NET
-  PUBLISH_PATH: './publish'                    # Ścieżka do publikacji
+  DOTNET_VERSION: '8.0.x'                            # Wersja .NET
+  PUBLISH_PATH: './backend-dotnet/LibreCgmAnalyzer.Api/publish'           # Ścieżka do publikacji
 
 jobs:
   build-and-deploy:
@@ -26,7 +26,7 @@ jobs:
         run: |
           cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
           dotnet build --configuration Release
-          dotnet publish -c Release -o ${{ env.PUBLISH_PATH }}
+          dotnet publish -c Release -o publish
 
       - name: Login to Azure
         uses: azure/login@v1
