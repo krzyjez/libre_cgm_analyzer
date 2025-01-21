@@ -1,7 +1,13 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.27';
+const String appVersion = '4.0.28';
 
 /* Historia zmian:
+
+4.0.28 (2025-01-21)
+    Dodano informacje o wersji API:
+    - Dodano wyświetlanie wersji API w nagłówku aplikacji
+    - Zaktualizowano backend do wersji 1.2
+    - Poprawiono konfigurację deploymentu na Azure
 
 4.0.27 (2025-01-21)
     Migracja backendu na .NET i Azure:

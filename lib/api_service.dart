@@ -97,8 +97,7 @@ class ApiService {
         ),
       );
 
-      _logger.info(
-          'Wysyłanie żądania: uri=${uri.toString()}, size=${image.bytes.length}');
+      _logger.info('Wysyłanie żądania: uri=${uri.toString()}, size=${image.bytes.length}');
 
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
