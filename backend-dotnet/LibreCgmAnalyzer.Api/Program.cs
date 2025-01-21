@@ -28,12 +28,12 @@ try
   {
     c.SwaggerDoc("v1", new OpenApiInfo { 
       Title = "LibreCgmAnalyzer API", 
-      Version = "v1",
+      Version = "v1.1",
       Description = "API do analizy danych z LibreCGM",
       Contact = new OpenApiContact
       {
-        Name = "Krzysztof Jeziorny",
-        Email = "krzysztof.jeziorny@gmail.com"
+        Name = "Krzysztof Jeż",
+        Email = "krzyjez@gmail.com"
       }
     });
   });
@@ -41,10 +41,25 @@ try
   // Rejestracja BlobStorageService
   builder.Services.AddSingleton<IBlobStorageService>(sp =>
   {
-    var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") 
-        ?? builder.Configuration["AzureStorage:ConnectionString"]
-        ?? throw new InvalidOperationException("Connection string not found");
-    return new BlobStorageService(connectionString, sp.GetRequiredService<ILogger<BlobStorageService>>());
+    try 
+    {
+      var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") 
+          ?? builder.Configuration["AzureStorage:ConnectionString"];
+      
+      if (string.IsNullOrEmpty(connectionString))
+      {
+        Log.Error("Connection string is null or empty. Check AZURE_STORAGE_CONNECTION_STRING environment variable.");
+        throw new InvalidOperationException("Azure Storage connection string not found in configuration");
+      }
+
+      Log.Information("Successfully configured Azure Storage connection");
+      return new BlobStorageService(connectionString, sp.GetRequiredService<ILogger<BlobStorageService>>());
+    }
+    catch (Exception ex)
+    {
+      Log.Error(ex, "Failed to configure BlobStorageService");
+      throw;
+    }
   });
 
   // Konfiguracja CORS

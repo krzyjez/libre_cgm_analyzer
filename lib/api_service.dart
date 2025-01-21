@@ -6,7 +6,7 @@ import 'logger.dart';
 import 'model.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://localhost:5000/api';
+  static const _baseUrl = 'https://libre-cgm-analyzer-api-e7bsfghgdtdscka2.polandcentral-01.azurewebsites.net/api';
   final _logger = Logger('ApiService');
 
   /// Pobiera dane debugowe z pliku
