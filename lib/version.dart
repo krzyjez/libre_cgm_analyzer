@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.28';
+const String appVersion = '4.0.29';
 
 /* Historia zmian:
+
+4.0.29 (2025-01-21)
+    Ulepszenia w wyświetlaniu informacji:
+    - Dodano wyświetlanie dnia tygodnia przy dacie
+    - Poprawiono wyświetlanie wersji w nagłówku (APP i API)
 
 4.0.28 (2025-01-21)
     Dodano informacje o wersji API:

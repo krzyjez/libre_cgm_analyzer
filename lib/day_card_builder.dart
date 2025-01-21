@@ -137,13 +137,13 @@ class DayCardBuilder {
 
     return Container(
       width: double.infinity,
-      color: Colors.green[900],
+      color: Colors.green[700],  // Jaśniejszy odcień zieleni
       padding: const EdgeInsets.all(8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            'Data: ${DateFormat('yyyy-MM-dd').format(day.date)}$offsetStr',
+            'Data: ${DateFormat('yyyy-MM-dd').format(day.date)} (${DateFormat('EEEE').format(day.date)})$offsetStr',
             style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,

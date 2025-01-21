@@ -223,7 +223,8 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             Text(title),
             const SizedBox(width: 10),
-            Text('API: $_apiVersion', 
+            Text(
+              'APP v$appVersion | API $_apiVersion', 
               style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
             ),
           ],
