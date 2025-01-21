@@ -1,0 +1,7 @@
+{
+  "name": "libre-cgm-analyzer",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "echo 'Build already completed by Flutter'"
+  }
+}
