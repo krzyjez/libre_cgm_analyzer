@@ -59,3 +59,8 @@ app.*.map.json
 
 # Uploaded images
 data_source/images/
+
+# Azurite files
+__azurite_db_blob__.json
+__azurite_db_blob_extent__.json
+__blobstorage__/
