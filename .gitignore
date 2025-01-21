@@ -58,6 +58,10 @@ app.*.map.json
 **/.env.test.local
 **/.env.production.local
 
+# .NET build output
+backend-dotnet/**/bin/
+backend-dotnet/**/obj/
+
 # Uploaded images
 data_source/images/
 
