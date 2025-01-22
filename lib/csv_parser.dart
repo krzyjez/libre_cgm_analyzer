@@ -80,7 +80,10 @@ class CsvParser {
 
     // Analizujemy okresy wysokiego poziomu glukozy dla każdego dnia
     for (var day in _days) {
-      day.periods.addAll(analyzeHighGlucose(day.measurements, glucoseThreshold));
+      day.periods.addAll(analyzeHighGlucose(
+        day.measurements,
+        glucoseThreshold,
+      ));
     }
 
     // wypisujemy liczbe dni
@@ -199,8 +202,7 @@ class CsvParser {
     }
 
     // Obsłuż przypadek, gdy okres wysokiego poziomu kończy się ostatnim pomiarem dnia
-    if (periodStartTime != null && periodMeasurements.isNotEmpty && wasAboveThreshold) {
-      // Dodajemy sztuczny punkt końcowy na tym samym poziomie co ostatni pomiar
+    if (wasAboveThreshold && periodStartTime != null && periodMeasurements.isNotEmpty) {
       var lastMeasurement = measurements.last;
       periodMeasurements.add(lastMeasurement);
 

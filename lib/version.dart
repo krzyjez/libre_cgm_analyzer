@@ -1,7 +1,11 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.29';
+const String appVersion = '4.0.30';
 
 /* Historia zmian:
+
+4.0.30 (2025-01-22)
+    - Poprawiono błąd z offsetem - teraz prawidłowo wpływa na statystyki i okresy przekroczeń
+    - Poprawiono drobne ostrzeżenia w kodzie (const, formatowanie)
 
 4.0.29 (2025-01-21)
     Ulepszenia w wyświetlaniu informacji:

@@ -52,10 +52,9 @@ class GlucoseAreaCalculator {
             current.timestamp, current.glucoseValue, next.timestamp, next.glucoseValue, threshold);
 
         final double partialDelta = next.timestamp.difference(intersectionTime).inMinutes.toDouble();
-        final double area = ((_weightFunction(0) + weightedExcessNext) / 2.0) * partialDelta;
+        final double area = ((weightedExcessNext + _weightFunction(0)) / 2.0) * partialDelta;
         totalArea += area;
       }
-      // Jeśli oba punkty są poniżej progu, nie dodajemy nic.
     }
 
     return totalArea;

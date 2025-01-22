@@ -114,7 +114,7 @@ class _NoteDialogState extends State<NoteDialog> {
         final hour = int.parse(timeParts[0]);
         final minute = int.parse(timeParts[1]);
         if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-          throw FormatException('Nieprawidłowa godzina lub minuta');
+          throw const FormatException('Nieprawidłowa godzina lub minuta');
         }
 
         final timestamp = DateTime(

@@ -46,7 +46,7 @@ class OffsetDialog extends StatelessWidget {
     Future<void> saveOffset() async {
       final newOffset = int.tryParse(textController.text) ?? 0;
       logger.info('Zapisuję nowy offset: $newOffset');
-      
+
       if (await controller.updateOffset(date, newOffset)) {
         if (context.mounted) {
           Navigator.pop(context);
@@ -55,7 +55,7 @@ class OffsetDialog extends StatelessWidget {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Nie udało się zapisać offsetu. Spróbuj ponownie później.'),
               backgroundColor: Colors.red,
             ),
@@ -70,7 +70,7 @@ class OffsetDialog extends StatelessWidget {
         controller: textController,
         autofocus: true,
         keyboardType: TextInputType.number,
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           labelText: 'Offset',
           hintText: 'Wprowadź wartość offsetu',
         ),
@@ -78,7 +78,7 @@ class OffsetDialog extends StatelessWidget {
       onCancel: () => Navigator.pop(context),
       onSave: saveOffset,
       additionalShortcuts: {
-        SingleActivator(LogicalKeyboardKey.enter): saveOffset,
+        const SingleActivator(LogicalKeyboardKey.enter): saveOffset,
       },
     );
   }

@@ -328,4 +328,35 @@ class DayController extends ChangeNotifier {
       return false;
     }
   }
+
+  /// Sprawdza czy wartość przekracza próg z uwzględnieniem offsetu
+  bool isAboveThreshold(DateTime date, int value, int threshold) {
+    return getAdjustedGlucoseValue(date, value) > threshold;
+  }
+
+  /// Zwraca listę okresów przekroczeń z uwzględnieniem offsetu
+  List<Period> getAdjustedPeriods(DayData day) {
+    List<Period> adjustedPeriods = [];
+
+    // Filtrujemy okresy, które po uwzględnieniu offsetu nadal przekraczają próg
+    for (var period in day.periods) {
+      var maxAdjustedValue = period.periodMeasurements
+          .map((m) => getAdjustedGlucoseValue(day.date, m.glucoseValue))
+          .reduce((a, b) => a > b ? a : b);
+
+      if (maxAdjustedValue > treshold) {
+        // Tworzymy nowy okres z uwzględnieniem offsetu
+        var adjustedPeriod = Period(
+          startTime: period.startTime,
+          endTime: period.endTime,
+          points: period.points,
+          highestMeasure: maxAdjustedValue,
+        );
+        adjustedPeriod.periodMeasurements.addAll(period.periodMeasurements);
+        adjustedPeriods.add(adjustedPeriod);
+      }
+    }
+
+    return adjustedPeriods;
+  }
 }

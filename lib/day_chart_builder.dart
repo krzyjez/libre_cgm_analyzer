@@ -10,20 +10,20 @@ import 'day_controller.dart';
 class DayChartBuilder {
   // Stałe wykresu
   static const double chartHeight = 300.0;
-  
+
   // Kolory
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
-  
+
   // Zakresy osi Y
-  static const double minYDefault = 80.0;  // minimalna wartość osi Y
-  static const double maxYDefault = 180.0;  // maksymalna wartość osi Y
-  static const double extraSpaceForLabel = 20.0;  // dodatkowa przestrzeń na etykietę
+  static const double minYDefault = 80.0; // minimalna wartość osi Y
+  static const double maxYDefault = 180.0; // maksymalna wartość osi Y
+  static const double extraSpaceForLabel = 20.0; // dodatkowa przestrzeń na etykietę
 
   // Zakresy osi X
-  static const int defaultStartHour = 7;    // domyślna godzina początkowa
-  static const int defaultEndHour = 23;     // domyślna godzina końcowa
-  static const int defaultEndMinute = 59;   // domyślna minuta końcowa dla ostatniej godziny
+  static const int defaultStartHour = 7; // domyślna godzina początkowa
+  static const int defaultEndHour = 23; // domyślna godzina końcowa
+  static const int defaultEndMinute = 59; // domyślna minuta końcowa dla ostatniej godziny
 
   /// Buduje wykres na podstawie danych dnia
   static Widget build(BuildContext context, DayController controller, DayData day) {
@@ -36,6 +36,9 @@ class DayChartBuilder {
         .toList();
 
     final tooltipBehavior = _buildTooltipBehavior(day);
+
+    // Pobieramy skorygowane okresy
+    final adjustedPeriods = controller.getAdjustedPeriods(day);
 
     // Tworzenie wykresu SfCartesianChart z seriami danych
     return Container(
@@ -52,8 +55,8 @@ class DayChartBuilder {
             dataSource: chartData,
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
-            markerSettings:
-                MarkerSettings(isVisible: true, shape: DataMarkerType.circle, color: Colors.blue, height: 4, width: 4),
+            markerSettings: const MarkerSettings(
+                isVisible: true, shape: DataMarkerType.circle, color: Colors.blue, height: 4, width: 4),
             animationDuration: 0,
           ),
           // Seria punktowa - pokazuje miejsca, gdzie dodano notatki
@@ -62,7 +65,7 @@ class DayChartBuilder {
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
             dataLabelMapper: (ChartData data, _) => data.tooltipText,
-            markerSettings: MarkerSettings(
+            markerSettings: const MarkerSettings(
               isVisible: true,
               shape: DataMarkerType.circle,
               color: noteColor,
@@ -73,12 +76,15 @@ class DayChartBuilder {
           ),
           // Seria dla punktów maksymalnych
           ScatterSeries<ChartData, DateTime>(
-            dataSource: day.periods.map((period) => ChartData(
-              period.periodMeasurements.firstWhere((m) => 
-                m.glucoseValue == period.highestMeasure).timestamp,
-              controller.getAdjustedGlucoseValue(day.date, period.highestMeasure) as double,
-              tooltipText: period.points.toString()
-            )).toList(),
+            dataSource: adjustedPeriods
+                .map((period) => ChartData(
+                    period.periodMeasurements
+                        .firstWhere((m) =>
+                            controller.getAdjustedGlucoseValue(day.date, m.glucoseValue) == period.highestMeasure)
+                        .timestamp,
+                    period.highestMeasure.toDouble(),
+                    tooltipText: period.points.toString()))
+                .toList(),
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
             dataLabelMapper: (ChartData data, _) => data.tooltipText,
@@ -172,7 +178,7 @@ class DayChartBuilder {
 
     // Używamy domyślnych zakresów
     minY = minY < minYDefault ? minY : minYDefault;
-    
+
     // Maksimum to większa z wartości: maxYDefault lub maksymalna wartość + miejsce na etykietę
     maxY = max(maxYDefault, maxY + extraSpaceForLabel);
 

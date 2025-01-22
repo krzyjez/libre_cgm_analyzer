@@ -137,7 +137,7 @@ class DayCardBuilder {
 
     return Container(
       width: double.infinity,
-      color: Colors.green[700],  // Jaśniejszy odcień zieleni
+      color: Colors.green[700], // Jaśniejszy odcień zieleni
       padding: const EdgeInsets.all(8.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -256,7 +256,10 @@ class DayCardBuilder {
 
   /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
   static Widget _buildStats(BuildContext context, DayController controller, DayData day) {
-    if (day.periods.isEmpty) {
+    // Pobieramy okresy z uwzględnieniem offsetu
+    var adjustedPeriods = controller.getAdjustedPeriods(day);
+
+    if (adjustedPeriods.isEmpty) {
       return Container(
           padding: const EdgeInsets.all(8.0),
           child: const Center(child: Icon(Icons.thumb_up, size: 90, color: Colors.green)));
@@ -266,25 +269,26 @@ class DayCardBuilder {
     List<Widget> periodWidgets = [];
 
     // Obliczamy sumę punktów
-    final totalPoints = day.periods.fold(0, (sum, period) => sum + period.points);
+    final totalPoints = adjustedPeriods.fold(0, (sum, period) => sum + period.points);
 
     // Dodajemy nagłówek z liczbą przekroczeń i sumą punktów
-    periodWidgets.add(Text('Przekroczenia: ${day.periods.length}/$totalPoints',
+    periodWidgets.add(Text('Przekroczenia: ${adjustedPeriods.length}/$totalPoints',
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)));
 
     // odstęp
     periodWidgets.add(const SizedBox(height: 8));
 
     // Dodajemy informacje o przekroczeniach
-    for (var i = 0; i < day.periods.length; i++) {
-      final period = day.periods[i];
+    for (var i = 0; i < adjustedPeriods.length; i++) {
+      final period = adjustedPeriods[i];
       periodWidgets.add(
         InkWell(
           onTap: () => MeasurementsDialog.show(
             context: context,
             title: 'Przekroczenie (${period.points} pkt)',
             values: period.periodMeasurements
-                .map((m) => '${DateFormat('HH:mm').format(m.timestamp)}: ${m.glucoseValue} mg/dL')
+                .map((m) =>
+                    '${DateFormat('HH:mm').format(m.timestamp)}: ${controller.getAdjustedGlucoseValue(day.date, m.glucoseValue)} mg/dL')
                 .join('\n'),
           ),
           child: Padding(
@@ -307,7 +311,7 @@ class DayCardBuilder {
       padding: const EdgeInsets.all(8.0),
       color: Colors.red[50],
       child: ConstrainedBox(
-        constraints: BoxConstraints(
+        constraints: const BoxConstraints(
           maxHeight: chartHeight, // używamy tej samej wysokości co wykres
         ),
         child: SingleChildScrollView(

@@ -99,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (!context.mounted) return;
 
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
+              const SnackBar(
                 content: Text('Zapisano plik na serwerze'),
                 backgroundColor: Colors.green,
               ),
@@ -109,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage> {
             if (!context.mounted) return;
 
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
+              const SnackBar(
                 content: Text('Nie udało się zapisać pliku na serwerze. Spróbuj ponownie.'),
                 backgroundColor: Colors.red,
               ),
@@ -172,7 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Na serwerze brak danych glukozy. Wgraj plik CSV. (przycisk w prawym górnym rogu)'),
+            content: const Text('Na serwerze brak danych glukozy. Wgraj plik CSV. (przycisk w prawym górnym rogu)'),
             backgroundColor: Colors.red,
             action: SnackBarAction(
               label: 'Ponów',
@@ -224,7 +224,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Text(title),
             const SizedBox(width: 10),
             Text(
-              'APP v$appVersion | API $_apiVersion', 
+              'APP v$appVersion | API $_apiVersion',
               style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
             ),
           ],
