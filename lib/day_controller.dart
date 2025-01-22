@@ -35,6 +35,21 @@ class DayController extends ChangeNotifier {
     return null;
   }
 
+  /// Znajduje DayUser dla danej daty
+  DayUser? findUserDayByDateDebug(DateTime date) {
+    if (_userInfo == null) return null;
+
+    _logger.info('Szukam dnia dla daty: ${date.toIso8601String()}');
+    for (var dayUser in _userInfo!.days) {
+      _logger.info('Porównuję z dniem: ${dayUser.date.toIso8601String()}');
+      if (dayUser.date.year == date.year && dayUser.date.month == date.month && dayUser.date.day == date.day) {
+        return dayUser;
+      }
+    }
+
+    return null;
+  }
+
   /// Aktualizuje offset dla danego dnia
   Future<bool> updateOffset(DateTime date, int newOffset) async {
     if (_userInfo == null) {
@@ -312,11 +327,11 @@ class DayController extends ChangeNotifier {
 
     var dayUser = findUserDayByDate(date);
     if (dayUser == null) {
-      _logger.error('Próba zmiany widoczności nieistniejącego dnia: ${date.toIso8601String()}');
-      return false;
+      dayUser = DayUser(date, hidden: hide);
+      _userInfo!.days.add(dayUser);
+    } else {
+      dayUser.hidden = hide;
     }
-
-    dayUser.hidden = hide;
 
     // Zapisz zmiany na serwerze
     try {

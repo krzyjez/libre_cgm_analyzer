@@ -1,7 +1,10 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.30';
+const String appVersion = '4.0.31';
 
 /* Historia zmian:
+
+4.0.31 (2025-01-22)
+    - Poprawiono błąd z ukrywaniem dni - teraz można ukryć dzień nawet jeśli nie ma dla niego jeszcze danych użytkownika
 
 4.0.30 (2025-01-22)
     - Poprawiono błąd z offsetem - teraz prawidłowo wpływa na statystyki i okresy przekroczeń
@@ -88,7 +91,7 @@ const String appVersion = '4.0.30';
     - Bezpieczne zapisywanie - obrazki wysyłane tylko przy zapisie notatki
 - 4. Usprawnienia UI:
     - Przeniesienie pola czasu nad zakładki
-    - Usunięcie zbędnych etykiet
+    - Usunięto zbędne etykiety
     - Zaokrąglone rogi miniatur
     - Przyciski usuwania na miniaturach
     - Responsywny układ siatki
