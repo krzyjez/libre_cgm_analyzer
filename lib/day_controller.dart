@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'model.dart';
 import 'logger.dart';
 import 'api_service.dart';
+import 'csv_parser.dart';
 
 /// Kontroler zarządzający danymi i operacjami dla dni
 class DayController extends ChangeNotifier {
@@ -9,12 +10,19 @@ class DayController extends ChangeNotifier {
   final Logger _logger = Logger('DayController');
 
   UserInfo? _userInfo;
+  List<DayData> _csvData = [];
   final int _defaultTreshold;
 
   DayController(this._apiService, this._defaultTreshold);
 
   /// Pobiera threshold dla użytkownika
   int get treshold => _userInfo?.treshold ?? _defaultTreshold;
+
+  /// Zwraca listę dni z danymi
+  List<DayData> get csvData => _csvData;
+
+  /// Zwraca dane użytkownika
+  UserInfo get userInfo => _userInfo!;
 
   /// Ustawia dane użytkownika
   set userInfo(UserInfo value) {
@@ -373,5 +381,18 @@ class DayController extends ChangeNotifier {
     }
 
     return adjustedPeriods;
+  }
+
+  /// Parsuje dane CSV i tworzy strukturę danych
+  Future<void> parseCsvData(String csvContent) async {
+    if (_userInfo == null) {
+      _logger.error('Próba parsowania CSV bez danych użytkownika');
+      return;
+    }
+
+    final csvParser = CsvParser();
+    csvParser.parseCsv(csvContent, treshold, _userInfo!);
+    _csvData = csvParser.days;
+    notifyListeners();
   }
 }

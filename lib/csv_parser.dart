@@ -13,7 +13,6 @@
 import 'package:intl/intl.dart';
 import 'model.dart';
 import 'logger.dart';
-import 'glucose_calculator.dart';
 
 class CsvParser {
   final _logger = Logger('CsvParser');
@@ -21,6 +20,7 @@ class CsvParser {
   // private fields
   List<List<String>> _data = []; // Surowe dane z pliku CSV
   List<DayData> _days = []; // Przetworzone dane pogrupowane po dniach
+  UserInfo? _userInfo; // Dane użytkownika z offsetami
 
   // getters
   /// Zwraca niemutowalną listę dni z danymi
@@ -34,13 +34,16 @@ class CsvParser {
   /// Parametry:
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
-  void parseCsv(String csvContent, int glucoseThreshold) {
+  /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
+  void parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
     try {
       // Przetwarzanie wierszy CSV
       _data = csvContent.split('\n').map((line) => line.split(',')).toList();
     } catch (e) {
       _logger.error('Nie udało się przetworzyć pliku CSV: $e');
     }
+
+    _userInfo = userInfo;
 
     // Przetwarzanie wierszy CSV
     Map<DateTime, DayData> daysMap = {};
@@ -83,6 +86,7 @@ class CsvParser {
       day.periods.addAll(analyzeHighGlucose(
         day.measurements,
         glucoseThreshold,
+        day.date,
       ));
     }
 
@@ -145,21 +149,33 @@ class CsvParser {
   /// Parametry:
   /// - `measurements`: Lista obiektów `Measurement`, zawierająca dane pomiarowe z danego dnia.
   /// - `glucoseThreshold`: Wartość progowa glukozy, powyżej której pomiary są uznawane za wysokie.
+  /// - `date`: Data dnia dla którego analizujemy pomiary (potrzebna do znalezienia offsetu)
   ///
   /// Zwraca listę obiektów `Period` z czasem rozpoczęcia i zakończenia, punktami i najwyższym pomiarem.
-  List<Period> analyzeHighGlucose(List<Measurement> measurements, int glucoseThreshold) {
+  List<Period> analyzeHighGlucose(List<Measurement> measurements, int glucoseThreshold, DateTime date) {
     List<Period> highPeriods = [];
     DateTime? periodStartTime;
     int highestMeasure = 0;
     List<Measurement> periodMeasurements = [];
     bool wasAboveThreshold = false;
 
+    // Znajdź offset dla tego dnia
+    int offset = 0;
+    if (_userInfo != null) {
+      final dayUser = _userInfo!.days.firstWhere(
+        (d) => d.date.year == date.year && d.date.month == date.month && d.date.day == date.day,
+        orElse: () => DayUser(date),
+      );
+      offset = dayUser.offset;
+    }
+
     // Sort measurements by timestamp
     measurements.sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     for (var i = 0; i < measurements.length; i++) {
       var measurement = measurements[i];
-      bool isAboveThreshold = measurement.glucoseValue > glucoseThreshold;
+      // Uwzględnij offset przy sprawdzaniu przekroczenia progu
+      bool isAboveThreshold = (measurement.glucoseValue + offset) > glucoseThreshold;
 
       // Jeśli przekraczamy próg, a poprzednio byliśmy poniżej
       if (isAboveThreshold && !wasAboveThreshold && i > 0) {
@@ -167,13 +183,13 @@ class CsvParser {
         periodStartTime = measurements[i - 1].timestamp;
         periodMeasurements.add(measurements[i - 1]);
         periodMeasurements.add(measurement);
-        highestMeasure = measurement.glucoseValue;
+        highestMeasure = measurement.glucoseValue + offset;
       }
       // Jeśli kontynuujemy okres powyżej progu
       else if (isAboveThreshold && wasAboveThreshold) {
         periodMeasurements.add(measurement);
-        if (measurement.glucoseValue > highestMeasure) {
-          highestMeasure = measurement.glucoseValue;
+        if (measurement.glucoseValue + offset > highestMeasure) {
+          highestMeasure = measurement.glucoseValue + offset;
         }
       }
       // Jeśli schodzimy poniżej progu, a poprzednio byliśmy powyżej
@@ -182,7 +198,7 @@ class CsvParser {
         periodMeasurements.add(measurement);
 
         var periodEndTime = measurement.timestamp;
-        int points = calculatePoints(periodMeasurements, glucoseThreshold);
+        int points = calculatePoints(periodMeasurements, glucoseThreshold, offset);
         var period = Period(
           startTime: periodStartTime,
           endTime: periodEndTime,
@@ -206,7 +222,7 @@ class CsvParser {
       var lastMeasurement = measurements.last;
       periodMeasurements.add(lastMeasurement);
 
-      int points = calculatePoints(periodMeasurements, glucoseThreshold);
+      int points = calculatePoints(periodMeasurements, glucoseThreshold, offset);
       var period = Period(
         startTime: periodStartTime,
         endTime: lastMeasurement.timestamp,
@@ -225,13 +241,37 @@ class CsvParser {
   /// Parametry:
   /// - `measurements`: Lista pomiarów w danym okresie
   /// - `glucoseThreshold`: Próg, powyżej którego glukoza jest uznawana za wysoką
+  /// - `offset`: Offset do dodania do każdego pomiaru
   ///
   /// Zwraca:
   /// Liczbę punktów reprezentującą ważone pole powierzchni nad linią threshold
-  int calculatePoints(List<Measurement> measurements, int glucoseThreshold) {
-    if (measurements.length < 2) return 0;
+  int calculatePoints(List<Measurement> measurements, int glucoseThreshold, int offset) {
+    if (measurements.isEmpty) return 0;
 
-    double points = GlucoseAreaCalculator.calculateAreaAboveThreshold(measurements, glucoseThreshold);
-    return points.round();
+    int points = 0;
+    for (var i = 0; i < measurements.length - 1; i++) {
+      var current = measurements[i];
+      var next = measurements[i + 1];
+
+      // Dodaj offset do wartości glukozy
+      var currentValue = current.glucoseValue + offset;
+      var nextValue = next.glucoseValue + offset;
+
+      // Oblicz pole powierzchni tylko jeśli przynajmniej jedna wartość jest powyżej progu
+      if (currentValue > glucoseThreshold || nextValue > glucoseThreshold) {
+        // Weź wartości powyżej progu
+        var currentAbove = (currentValue > glucoseThreshold) ? currentValue - glucoseThreshold : 0;
+        var nextAbove = (nextValue > glucoseThreshold) ? nextValue - glucoseThreshold : 0;
+
+        // Oblicz średnią wysokość i czas trwania w minutach
+        var avgHeight = (currentAbove + nextAbove) / 2;
+        var durationMinutes = next.timestamp.difference(current.timestamp).inMinutes;
+
+        // Dodaj punkty (pole powierzchni * waga)
+        points += (avgHeight * durationMinutes).round();
+      }
+    }
+
+    return points;
   }
 }

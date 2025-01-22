@@ -52,6 +52,8 @@ class DayData {
 @JsonSerializable()
 class DayUser {
   final DateTime date;
+
+  /// Notatki użytkownika (z json) - jeśli mają taki sam timestamp to "przykrywają" notatki z csv
   final List<Note> notes;
   String comments;
   // Jeśli true to nie wyswietlamy danego dnia gdyż dane są np. zafałszywane

@@ -1,7 +1,17 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.31';
+const String appVersion = '4.0.33';
 
 /* Historia zmian:
+
+4.0.33 (2025-01-22)
+    - Naprawiono błąd gdzie zmiana offsetu nie wpływała na liczbę punktów w okresach przekroczeń
+    - Zmieniono kolejność wczytywania danych (najpierw user data z offsetami, potem CSV) by offset był uwzględniany przy analizie
+
+
+4.0.32 (2025-01-22)
+    - Dodano obsługę offsetu w obliczeniach przekroczeń glukozy
+    - Poprawiono analizę okresów wysokiego poziomu glukozy
+    - Zmieniono kolejność wczytywania danych (najpierw user data, potem CSV)
 
 4.0.31 (2025-01-22)
     - Poprawiono błąd z ukrywaniem dni - teraz można ukryć dzień nawet jeśli nie ma dla niego jeszcze danych użytkownika

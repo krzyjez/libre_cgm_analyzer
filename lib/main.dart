@@ -91,7 +91,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Tylko jeśli zapis się udał, parsujemy i wyświetlamy dane
             setState(() {
-              _csvParser.parseCsv(csvContent, defaultTreshold);
+              _csvParser.parseCsv(csvContent, defaultTreshold, _dayController.userInfo);
               _fileName = 'Dane z serwera'; // Dodajemy nazwę pliku do stanu
             });
 
@@ -164,7 +164,7 @@ class _MyHomePageState extends State<MyHomePage> {
         _fileName = 'Dane z serwera';
         _dayController.userInfo = userInfo;
         if (csvData.isNotEmpty) {
-          _csvParser.parseCsv(csvData, userInfo.treshold);
+          _csvParser.parseCsv(csvData, userInfo.treshold, userInfo);
         }
       });
     } catch (e) {

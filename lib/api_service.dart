@@ -24,16 +24,7 @@ class ApiService {
   /// Pobiera dane użytkownika i CSV z serwera
   Future<(UserInfo, String)> loadDataFromApi(int defaultTreshold) async {
     try {
-      // Pobieranie danych CSV
-      final csvResponse = await http.get(Uri.parse('$_baseUrl/csv-data'));
-      //_logger.info('kod pobieranie danyc csv: ${csvResponse.statusCode}');
-      if (csvResponse.statusCode != 200) {
-        throw Exception('Failed to load CSV data');
-      }
-      final csvData = utf8.decode(csvResponse.bodyBytes);
-      _logger.info('Pobrano dane CSV');
-
-      // Pobieranie danych użytkownika
+      // Najpierw pobierz dane użytkownika
       UserInfo userData;
       final userResponse = await http.get(Uri.parse('$_baseUrl/user-data'));
 
@@ -53,6 +44,14 @@ class ApiService {
         _logger.error('Błąd podczas pobierania danych użytkownika: ${userResponse.statusCode}');
         throw Exception('Nie udało się pobrać danych użytkownika. Kod: ${userResponse.statusCode}');
       }
+
+      // Następnie pobierz dane CSV
+      final csvResponse = await http.get(Uri.parse('$_baseUrl/csv-data'));
+      if (csvResponse.statusCode != 200) {
+        throw Exception('Failed to load CSV data');
+      }
+      final csvData = utf8.decode(csvResponse.bodyBytes);
+      _logger.info('Pobrano dane CSV');
 
       return (userData, csvData);
     } catch (e) {
