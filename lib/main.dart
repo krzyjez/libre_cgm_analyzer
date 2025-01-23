@@ -66,7 +66,6 @@ class _MyHomePageState extends State<MyHomePage> {
   final _apiService = ApiService();
   late final DayController _dayController;
 
-  String? _fileName;
   String _apiVersion = '';
   List<DayData> _days = []; // Lista dni z danymi z csv
 
@@ -94,7 +93,6 @@ class _MyHomePageState extends State<MyHomePage> {
             setState(() {
               _days = CsvParser.parseCsv(csvContent, defaultTreshold, _dayController.userInfo);
               _dayController.csvData = _days;
-              _fileName = 'Dane z serwera'; // Dodajemy nazwę pliku do stanu
             });
 
             // Wyświetlanie SnackBar tylko jeśli kontekst jest aktualny
@@ -135,39 +133,30 @@ class _MyHomePageState extends State<MyHomePage> {
   /// Wczytuje dane z API
   ///
   /// Pobiera:
-  /// - Dane użytkownika (ustawienia, offsety)
+  /// - Dane użytkownika (progi, offsety)
   /// - Dane CSV z pomiarami
-  ///
-  /// Po pobraniu danych:
-  /// - Aktualizuje dane użytkownika w kontrolerze
-  /// - Parsuje dane CSV
   Future<void> _loadDataFromApi() async {
     try {
-      final (userInfo, csvData) = await _apiService.loadDataFromApi(defaultTreshold);
-      _logger.info('Wczytano dane z API - userInfo: $userInfo');
+      // Pobierz dane użytkownika
+      final userInfo = await _apiService.loadUserInfo(defaultTreshold);
+      _dayController.userInfo = userInfo;
+
+      // Pobierz dane CSV
+      final csvData = await _apiService.loadCsvData();
+      final csvDays = CsvParser.parseCsv(csvData, userInfo.treshold, userInfo);
       setState(() {
-        _fileName = 'Dane z serwera';
-        _dayController.userInfo = userInfo;
         if (csvData.isNotEmpty) {
           // Parsujemy dane CSV
-          _days = CsvParser.parseCsv(csvData, userInfo.treshold, userInfo);
+          _days = csvDays;
           // Przekazujemy sparsowane dane do kontrolera
           _dayController.csvData = _days;
         }
       });
     } catch (e) {
       _logger.error('Błąd podczas pobierania danych z API: $e');
-      if (mounted) {
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Na serwerze brak danych glukozy. Wgraj plik CSV. (przycisk w prawym górnym rogu)'),
-            backgroundColor: Colors.red,
-            action: SnackBarAction(
-              label: 'Ponów',
-              textColor: Colors.white,
-              onPressed: () => _loadDataFromApi(),
-            ),
-          ),
+          const SnackBar(content: Text('Błąd podczas pobierania danych z API')),
         );
       }
     }
@@ -229,7 +218,7 @@ class _MyHomePageState extends State<MyHomePage> {
         listenable: _dayController,
         builder: (context, _) {
           return Center(
-            child: _fileName == null
+            child: _days.isEmpty
                 ? const Text('Wybierz plik CSV')
                 : ListView.builder(
                     itemCount: _days.length,

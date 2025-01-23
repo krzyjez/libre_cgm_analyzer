@@ -1,7 +1,15 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.34';
+const String appVersion = '4.0.35';
+
+/// Wersja API
+const apiVersion = '0.0.4';
 
 /* Historia zmian:
+
+4.0.35 (2025-01-23)
+    - Uproszczono CsvParser - usunięto stan wewnętrzny
+    - Rozdzielono odpowiedzialności w ApiService - osobne metody do pobierania danych użytkownika i CSV
+    - Uproszczono kod w main.dart - usunięto zbędną zmienną _fileName
 
 4.0.34 (2025-01-23)
     - Naprawiono błąd przy zmianie czasu notatki systemowej - teraz prawidłowo tworzona jest ukryta notatka (note=null)

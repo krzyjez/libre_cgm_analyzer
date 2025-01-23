@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'model.dart';
 import 'logger.dart';
 import 'api_service.dart';
-import 'csv_parser.dart';
 
 /// Kontroler zarządzający danymi i operacjami dla dni
 class DayController extends ChangeNotifier {

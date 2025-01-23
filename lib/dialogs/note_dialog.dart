@@ -104,9 +104,11 @@ class _NoteDialogState extends State<NoteDialog> {
       // Parsujemy czas
       final timeParts = timeController.text.split(':');
       if (timeParts.length != 2) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nieprawidłowy format czasu. Użyj HH:mm')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nieprawidłowy format czasu. Użyj HH:mm')),
+          );
+        }
         return;
       }
 
@@ -158,9 +160,11 @@ class _NoteDialogState extends State<NoteDialog> {
           }
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nieprawidłowy format czasu')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nieprawidłowy format czasu')),
+          );
+        }
       }
     }
 

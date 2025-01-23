@@ -21,8 +21,11 @@ class ApiService {
     }
   }
 
-  /// Pobiera dane użytkownika i CSV z serwera
-  Future<(UserInfo, String)> loadDataFromApi(int defaultTreshold) async {
+  /// Pobiera dane użytkownika z API
+  ///
+  /// Parametry:
+  /// - `defaultTreshold`: Domyślny próg dla pomiarów glukozy
+  Future<UserInfo> loadUserInfo(int defaultTreshold) async {
     try {
       // Najpierw pobierz dane użytkownika
       UserInfo userData;
@@ -45,18 +48,27 @@ class ApiService {
         throw Exception('Nie udało się pobrać danych użytkownika. Kod: ${userResponse.statusCode}');
       }
 
-      // Następnie pobierz dane CSV
-      final csvResponse = await http.get(Uri.parse('$_baseUrl/csv-data'));
-      if (csvResponse.statusCode != 200) {
-        throw Exception('Failed to load CSV data');
+      return userData;
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania danych użytkownika: $e');
+      throw Exception('Błąd podczas pobierania danych użytkownika');
+    }
+  }
+
+  /// Pobiera dane CSV z API
+  Future<String> loadCsvData() async {
+    try {
+      final response = await http.get(Uri.parse('$_baseUrl/csv-data'));
+      if (response.statusCode != 200) {
+        throw Exception('Nie udało się pobrać danych CSV. Kod: ${response.statusCode}');
       }
-      final csvData = utf8.decode(csvResponse.bodyBytes);
+      final csvData = utf8.decode(response.bodyBytes);
       _logger.info('Pobrano dane CSV');
 
-      return (userData, csvData);
+      return csvData;
     } catch (e) {
-      _logger.error('Błąd podczas pobierania danych z API: $e');
-      rethrow;
+      _logger.error('Błąd podczas pobierania danych CSV: $e');
+      throw Exception('Błąd podczas pobierania danych CSV');
     }
   }
 
