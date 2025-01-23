@@ -23,7 +23,7 @@ class CsvParser {
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
-  static List<DayData> _parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
+  static List<DayData> parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
     List<List<String>> data;
     try {
       // Przetwarzanie wierszy CSV
@@ -232,7 +232,7 @@ class CsvParser {
   ///
   /// Parametry:
   /// - `measurements`: Lista pomiarów w danym okresie
-  /// - `glucoseThreshold`: Próg, powyżej którygo glukoza jest uznawana za wysoką
+  /// - `glucoseThreshold`: Próg, powyżej któryego glukoza jest uznawana za wysoką
   /// - `offset`: Offset do dodania do każdego pomiaru
   ///
   /// Zwraca:
