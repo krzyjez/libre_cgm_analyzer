@@ -23,7 +23,7 @@ class CsvParser {
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
-  static List<DayData> parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
+  static List<DayData> _parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
     List<List<String>> data;
     try {
       // Przetwarzanie wierszy CSV
@@ -71,7 +71,7 @@ class CsvParser {
 
     // Analizujemy okresy wysokiego poziomu glukozy dla każdego dnia
     for (var day in days) {
-      day.periods.addAll(analyzeHighGlucose(
+      day.periods.addAll(_analyzeHighGlucose(
         day.measurements,
         glucoseThreshold,
         day.date,
@@ -140,11 +140,11 @@ class CsvParser {
   /// Parametry:
   /// - `measurements`: Lista obiektów `Measurement`, zawierająca dane pomiarowe z danego dnia.
   /// - `glucoseThreshold`: Wartość progowa glukozy, powyżej której pomiary są uznawane za wysokie.
-  /// - `date`: Data dnia dla któryrego analizujemy pomiary (potrzebna do znalezienia offsetu)
+  /// - `date`: Data dnia dla któryiego analizujemy pomiary (potrzebna do znalezienia offsetu)
   /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
   ///
   /// Zwraca listę obiektów `Period` z czasem rozpoczęcia i zakończenia, punktami i najwyższym pomiarem.
-  static List<Period> analyzeHighGlucose(
+  static List<Period> _analyzeHighGlucose(
       List<Measurement> measurements, int glucoseThreshold, DateTime date, UserInfo userInfo) {
     List<Period> highPeriods = [];
     DateTime? periodStartTime;
@@ -190,7 +190,7 @@ class CsvParser {
         periodMeasurements.add(measurement);
 
         var periodEndTime = measurement.timestamp;
-        int points = calculatePoints(periodMeasurements, glucoseThreshold, offset);
+        int points = _calculatePoints(periodMeasurements, glucoseThreshold, offset);
         var period = Period(
           startTime: periodStartTime,
           endTime: periodEndTime,
@@ -214,7 +214,7 @@ class CsvParser {
       var lastMeasurement = measurements.last;
       periodMeasurements.add(lastMeasurement);
 
-      int points = calculatePoints(periodMeasurements, glucoseThreshold, offset);
+      int points = _calculatePoints(periodMeasurements, glucoseThreshold, offset);
       var period = Period(
         startTime: periodStartTime,
         endTime: lastMeasurement.timestamp,
@@ -237,7 +237,7 @@ class CsvParser {
   ///
   /// Zwraca:
   /// Liczbę punktów reprezentującą ważone pole powierzchni nad linią threshold
-  static int calculatePoints(List<Measurement> measurements, int glucoseThreshold, int offset) {
+  static int _calculatePoints(List<Measurement> measurements, int glucoseThreshold, int offset) {
     if (measurements.isEmpty) return 0;
 
     int points = 0;
