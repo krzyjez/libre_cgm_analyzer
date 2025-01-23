@@ -10,6 +10,7 @@ import 'csv_parser.dart';
 import 'day_controller.dart';
 import 'day_card_builder.dart';
 import 'version.dart';
+import 'model.dart';
 
 /// Domyślny próg dla pomiarów glukozy (w mg/dL)
 const defaultTreshold = 140;
@@ -61,13 +62,13 @@ class MyHomePage extends StatefulWidget {
 /// - Parsowaniem plików CSV
 /// - Wyświetlaniem danych w postaci kart dla każdego dnia
 class _MyHomePageState extends State<MyHomePage> {
-  static const defaultTreshold = 140;
-  String? _fileName;
-  final CsvParser _csvParser = CsvParser();
-  final _logger = Logger('MyHomePage');
+  final _logger = Logger('_MyHomePageState');
   final _apiService = ApiService();
   late final DayController _dayController;
+
+  String? _fileName;
   String _apiVersion = '';
+  List<DayData> _days = []; // Lista dni z danymi z csv
 
   /// Pozwala użytkownikowi wybrać plik CSV z danymi
   ///
@@ -91,7 +92,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
             // Tylko jeśli zapis się udał, parsujemy i wyświetlamy dane
             setState(() {
-              _csvParser.parseCsv(csvContent, defaultTreshold, _dayController.userInfo);
+              _days = CsvParser.parseCsv(csvContent, defaultTreshold, _dayController.userInfo);
+              _dayController.csvData = _days;
               _fileName = 'Dane z serwera'; // Dodajemy nazwę pliku do stanu
             });
 
@@ -130,23 +132,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  /// Wczytuje przykładowe dane do debugowania
-  ///
-  /// Używane podczas developmentu do szybkiego testowania
-  /// funkcjonalności bez konieczności łączenia z API
-  // Future<void> _loadDebugData() async {
-  //   try {
-  //     final csvContent = await _apiService.loadDebugData();
-  //     setState(() {
-  //       _fileName = 'Dane debugowe';
-  //       _csvParser.parseCsv(csvContent, defaultTreshold);
-  //     });
-  //     print('Preloaded debug data: ${_csvParser.rowCount} wierszy');
-  //   } catch (e) {
-  //     _logger.error('Błąd podczas pobierania danych debugowych: $e');
-  //   }
-  // }
-
   /// Wczytuje dane z API
   ///
   /// Pobiera:
@@ -164,7 +149,10 @@ class _MyHomePageState extends State<MyHomePage> {
         _fileName = 'Dane z serwera';
         _dayController.userInfo = userInfo;
         if (csvData.isNotEmpty) {
-          _csvParser.parseCsv(csvData, userInfo.treshold, userInfo);
+          // Parsujemy dane CSV
+          _days = CsvParser.parseCsv(csvData, userInfo.treshold, userInfo);
+          // Przekazujemy sparsowane dane do kontrolera
+          _dayController.csvData = _days;
         }
       });
     } catch (e) {
@@ -208,9 +196,9 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     // Przygotowanie tytułu z podsumowaniem danych
     String title = 'Libre CGM Analyzer v$appVersion';
-    if (_csvParser.days.isNotEmpty) {
-      final daysCount = _csvParser.days.length;
-      final lastDay = _csvParser.days.last;
+    if (_days.isNotEmpty) {
+      final daysCount = _days.length;
+      final lastDay = _days.last;
       final dateFormat = DateFormat('dd.MM.yyyy');
       final lastDate = dateFormat.format(lastDay.date);
       title = '$daysCount dni (ostatni pomiar: $lastDate)';
@@ -244,9 +232,9 @@ class _MyHomePageState extends State<MyHomePage> {
             child: _fileName == null
                 ? const Text('Wybierz plik CSV')
                 : ListView.builder(
-                    itemCount: _csvParser.days.length,
+                    itemCount: _days.length,
                     itemBuilder: (context, index) {
-                      final day = _csvParser.days[index];
+                      final day = _days[index];
 
                       return DayCardBuilder.buildDayCard(
                         context,

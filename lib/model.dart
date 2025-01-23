@@ -95,3 +95,25 @@ class Period {
 
   Period({required this.startTime, required this.endTime, required this.points, required this.highestMeasure});
 }
+
+/// Rozszerzenie dla List<DayData>
+extension DayDataListExtension on List<DayData> {
+  /// Znajduje DayData dla danej daty
+  /// Zwraca null jeśli nie znaleziono
+  DayData? findByDate(DateTime date) {
+    try {
+      return firstWhere((day) =>
+        day.date.year == date.year &&
+        day.date.month == date.month &&
+        day.date.day == date.day
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+/// Rozszerzenie dla List<DayUser>
+extension DayUserListExtension on List<DayUser> {
+  // ...
+}

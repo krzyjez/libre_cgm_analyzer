@@ -1,7 +1,12 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.33';
+const String appVersion = '4.0.34';
 
 /* Historia zmian:
+
+4.0.34 (2025-01-23)
+    - Naprawiono błąd przy zmianie czasu notatki systemowej - teraz prawidłowo tworzona jest ukryta notatka (note=null)
+    - Dodano metodę findByDate dla List<DayData> do wyszukiwania danych systemowych
+    - Zaktualizowano dokumentację w how-it-works.md
 
 4.0.33 (2025-01-22)
     - Naprawiono błąd gdzie zmiana offsetu nie wpływała na liczbę punktów w okresach przekroczeń

@@ -117,7 +117,7 @@ class _NoteDialogState extends State<NoteDialog> {
           throw const FormatException('Nieprawidłowa godzina lub minuta');
         }
 
-        final timestamp = DateTime(
+        final newTimestamp = DateTime(
           widget.date.year,
           widget.date.month,
           widget.date.day,
@@ -125,47 +125,42 @@ class _NoteDialogState extends State<NoteDialog> {
           minute,
         );
 
-        // Tworzymy nową notatkę lub aktualizujemy istniejącą
+        // Tworzymy nową notatkę z oryginalnym timestampem (jeśli to edycja)
         Note note;
         if (widget.originalNote != null) {
-          // Przy edycji tworzymy nową notatkę z aktualnym tekstem
-          note = Note(timestamp, textController.text);
+          // Przy edycji używamy oryginalnego timestampa
+          note = Note(widget.originalNote!.timestamp, textController.text);
           // i kopiujemy do niej obrazki ze starej notatki
           note.images.addAll(widget.originalNote!.images);
         } else {
-          // Przy tworzeniu nowej notatki po prostu ją tworzymy
-          note = Note(timestamp, textController.text);
+          // Przy tworzeniu nowej notatki używamy nowego timestampa
+          note = Note(newTimestamp, textController.text);
         }
 
+        // Sprawdzamy czy zmienił się czas notatki
+        final timestampChanged =
+            widget.originalNote != null && !widget.originalNote!.timestamp.isAtSameMomentAs(newTimestamp);
+
         // Zapisujemy notatkę wraz z obrazkami
-        final success = await widget.controller.saveNoteWithImages(
-          widget.date,
-          note,
-          _newImages,
-          _imagesToDelete,
-        );
+        final success = await widget.controller.saveNoteWithImages(widget.date, note, _newImages, _imagesToDelete,
+            newTimestamp: timestampChanged ? newTimestamp : null);
 
         if (success) {
           widget.setStateCallback(() {});
           if (context.mounted) {
             Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notatka została zapisana')),
-            );
           }
         } else {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Nie udało się zapisać notatki')),
+              const SnackBar(content: Text('Błąd podczas zapisywania notatki')),
             );
           }
         }
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Błąd: $e')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nieprawidłowy format czasu')),
+        );
       }
     }
 

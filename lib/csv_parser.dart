@@ -15,40 +15,28 @@ import 'model.dart';
 import 'logger.dart';
 
 class CsvParser {
-  final _logger = Logger('CsvParser');
+  static final _logger = Logger('CsvParser');
 
-  // private fields
-  List<List<String>> _data = []; // Surowe dane z pliku CSV
-  List<DayData> _days = []; // Przetworzone dane pogrupowane po dniach
-  UserInfo? _userInfo; // Dane użytkownika z offsetami
-
-  // getters
-  /// Zwraca niemutowalną listę dni z danymi
-  List<DayData> get days => List.unmodifiable(_days);
-
-  /// Zwraca liczbę wierszy w pliku CSV
-  int get rowCount => _data.length;
-
-  /// Parsuje zawartość pliku CSV i tworzy strukturę danych.
+  /// Parsuje zawartość pliku CSV i zwraca listę dni z danymi.
   ///
   /// Parametry:
   /// - `csvContent`: Zawartość pliku CSV jako string
   /// - `glucoseThreshold`: Próg wysokiego poziomu glukozy używany do analizy
   /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
-  void parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
+  static List<DayData> parseCsv(String csvContent, int glucoseThreshold, UserInfo userInfo) {
+    List<List<String>> data;
     try {
       // Przetwarzanie wierszy CSV
-      _data = csvContent.split('\n').map((line) => line.split(',')).toList();
+      data = csvContent.split('\n').map((line) => line.split(',')).toList();
     } catch (e) {
       _logger.error('Nie udało się przetworzyć pliku CSV: $e');
+      return [];
     }
-
-    _userInfo = userInfo;
 
     // Przetwarzanie wierszy CSV
     Map<DateTime, DayData> daysMap = {};
 
-    for (var line in _data) {
+    for (var line in data) {
       if (line.length < 12) continue; // Skip malformed lines
 
       var timestamp = _parseDate(line[2]);
@@ -77,21 +65,24 @@ class CsvParser {
       }
     }
 
-    _days = daysMap.values.toList();
+    List<DayData> days = daysMap.values.toList();
     // sotujemy dni po dacie pierwsza jest najnowsza
-    _days.sort((a, b) => b.date.compareTo(a.date));
+    days.sort((a, b) => b.date.compareTo(a.date));
 
     // Analizujemy okresy wysokiego poziomu glukozy dla każdego dnia
-    for (var day in _days) {
+    for (var day in days) {
       day.periods.addAll(analyzeHighGlucose(
         day.measurements,
         glucoseThreshold,
         day.date,
+        userInfo,
       ));
     }
 
     // wypisujemy liczbe dni
-    _logger.info('Parsed ${_days.length} days');
+    _logger.info('Parsed ${days.length} days');
+
+    return days;
   }
 
   /// Parsuje datę w formacie dd-MM-yyyy HH:mm.
@@ -101,7 +92,7 @@ class CsvParser {
   /// Zwraca:
   /// - DateTime jeśli parsowanie się powiodło
   /// - null jeśli format daty jest nieprawidłowy
-  DateTime? _parseDate(String dateTimeString) {
+  static DateTime? _parseDate(String dateTimeString) {
     try {
       final dateTime = DateFormat('dd-MM-yyyy HH:mm').parse(dateTimeString);
       return dateTime;
@@ -119,7 +110,7 @@ class CsvParser {
   /// Zwraca:
   /// - Measurement jeśli wiersz zawiera poprawny pomiar
   /// - null jeśli wiersz nie jest pomiarem lub jest niepoprawny
-  Measurement? _tryParseMeasurement(List<String> line) {
+  static Measurement? _tryParseMeasurement(List<String> line) {
     try {
       var timestamp = _parseDate(line[2]);
       if (timestamp == null) return null;
@@ -149,10 +140,12 @@ class CsvParser {
   /// Parametry:
   /// - `measurements`: Lista obiektów `Measurement`, zawierająca dane pomiarowe z danego dnia.
   /// - `glucoseThreshold`: Wartość progowa glukozy, powyżej której pomiary są uznawane za wysokie.
-  /// - `date`: Data dnia dla którego analizujemy pomiary (potrzebna do znalezienia offsetu)
+  /// - `date`: Data dnia dla któryrego analizujemy pomiary (potrzebna do znalezienia offsetu)
+  /// - `userInfo`: Dane użytkownika zawierające offsety dla dni
   ///
   /// Zwraca listę obiektów `Period` z czasem rozpoczęcia i zakończenia, punktami i najwyższym pomiarem.
-  List<Period> analyzeHighGlucose(List<Measurement> measurements, int glucoseThreshold, DateTime date) {
+  static List<Period> analyzeHighGlucose(
+      List<Measurement> measurements, int glucoseThreshold, DateTime date, UserInfo userInfo) {
     List<Period> highPeriods = [];
     DateTime? periodStartTime;
     int highestMeasure = 0;
@@ -161,13 +154,12 @@ class CsvParser {
 
     // Znajdź offset dla tego dnia
     int offset = 0;
-    if (_userInfo != null) {
-      final dayUser = _userInfo!.days.firstWhere(
-        (d) => d.date.year == date.year && d.date.month == date.month && d.date.day == date.day,
-        orElse: () => DayUser(date),
-      );
-      offset = dayUser.offset;
-    }
+
+    final dayUser = userInfo.days.firstWhere(
+      (d) => d.date.year == date.year && d.date.month == date.month && d.date.day == date.day,
+      orElse: () => DayUser(date),
+    );
+    offset = dayUser.offset;
 
     // Sort measurements by timestamp
     measurements.sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -240,12 +232,12 @@ class CsvParser {
   ///
   /// Parametry:
   /// - `measurements`: Lista pomiarów w danym okresie
-  /// - `glucoseThreshold`: Próg, powyżej którego glukoza jest uznawana za wysoką
+  /// - `glucoseThreshold`: Próg, powyżej którygo glukoza jest uznawana za wysoką
   /// - `offset`: Offset do dodania do każdego pomiaru
   ///
   /// Zwraca:
   /// Liczbę punktów reprezentującą ważone pole powierzchni nad linią threshold
-  int calculatePoints(List<Measurement> measurements, int glucoseThreshold, int offset) {
+  static int calculatePoints(List<Measurement> measurements, int glucoseThreshold, int offset) {
     if (measurements.isEmpty) return 0;
 
     int points = 0;

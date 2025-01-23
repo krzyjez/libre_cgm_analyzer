@@ -21,6 +21,12 @@ class DayController extends ChangeNotifier {
   /// Zwraca listę dni z danymi
   List<DayData> get csvData => _csvData;
 
+  /// Ustawia listę dni z danymi
+  set csvData(List<DayData> value) {
+    _csvData = value;
+    notifyListeners();
+  }
+
   /// Zwraca dane użytkownika
   UserInfo get userInfo => _userInfo!;
 
@@ -35,21 +41,6 @@ class DayController extends ChangeNotifier {
     if (_userInfo == null) return null;
 
     for (var dayUser in _userInfo!.days) {
-      if (dayUser.date.year == date.year && dayUser.date.month == date.month && dayUser.date.day == date.day) {
-        return dayUser;
-      }
-    }
-
-    return null;
-  }
-
-  /// Znajduje DayUser dla danej daty
-  DayUser? findUserDayByDateDebug(DateTime date) {
-    if (_userInfo == null) return null;
-
-    _logger.info('Szukam dnia dla daty: ${date.toIso8601String()}');
-    for (var dayUser in _userInfo!.days) {
-      _logger.info('Porównuję z dniem: ${dayUser.date.toIso8601String()}');
       if (dayUser.date.year == date.year && dayUser.date.month == date.month && dayUser.date.day == date.day) {
         return dayUser;
       }
@@ -164,17 +155,31 @@ class DayController extends ChangeNotifier {
     final dayUser = findUserDayByDate(date);
     if (dayUser == null) return null;
 
-    for (var note in dayUser.notes) {
-      if (note.timestamp.isAtSameMomentAs(timestamp)) {
-        return note;
-      }
+    return dayUser.notes
+        .cast<Note?>()
+        .firstWhere((note) => note?.timestamp.isAtSameMomentAs(timestamp) ?? false, orElse: () => null);
+  }
+
+  /// Sprawdza czy istnieje notatka systemowa o danym timestampie
+  bool _hasSystemNote(DateTime date, DateTime timestamp) {
+    _logger.info('Sprawdzanie notatki systemowej dla daty $date i czasu $timestamp');
+    _logger.info(' liczba pozycji w _csvData: ${_csvData.length}');
+    final dayData = _csvData.findByDate(date);
+    _logger.info('- Znaleziono dane systemowe dla dnia: ${dayData != null}');
+    if (dayData == null) return false;
+
+    _logger.info('- Liczba notatek systemowych w tym dniu: ${dayData.notes.length}');
+    for (final note in dayData.notes) {
+      _logger.info('- Porównanie timestampów: ${note.timestamp} vs $timestamp');
     }
 
-    return null;
+    return dayData.notes.any((note) => note.timestamp.isAtSameMomentAs(timestamp));
   }
 
   /// Zapisuje notatkę użytkownika
-  Future<bool> saveUserNote(DateTime date, Note note) async {
+  /// [newTimestamp] - podajemy tylko gdy zmieniamy czas notatki
+  Future<bool> _saveUserNote(DateTime date, Note note, {DateTime? newTimestamp}) async {
+    _logger.info('Zapisanie notatki użytkownika dla daty $date');
     if (_userInfo == null) {
       _logger.error('Próba zapisania notatki bez danych użytkownika');
       return false;
@@ -186,14 +191,31 @@ class DayController extends ChangeNotifier {
       _userInfo!.days.add(dayUser);
     }
 
-    // Szukamy czy już istnieje notatka o tym samym timestamp
-    final existingNoteIndex = dayUser.notes.indexWhere((n) => n.timestamp == note.timestamp);
+    // Jeśli zmieniamy czas notatki, sprawdzamy czy pod starym timestampem jest notatka systemowa
+    if (newTimestamp != null) {
+      final hasOldSystemNote = _hasSystemNote(date, note.timestamp);
+      _logger.info('- Czy istnieje notatka systemowa pod starym czasem (${note.timestamp}): $hasOldSystemNote');
 
-    if (existingNoteIndex != -1) {
-      // Aktualizujemy istniejącą notatkę
-      dayUser.notes[existingNoteIndex] = note;
+      if (hasOldSystemNote) {
+        // Tworzymy "ukrytą" notatkę użytkownika (note=null) żeby przykryć starą notatkę systemową
+        final hiddenNote = Note(note.timestamp, null);
+        dayUser.notes.add(hiddenNote);
+        _logger.info('- Utworzono ukrytą notatkę (note=null) dla systemowej notatki z timestamp: ${note.timestamp}');
+      }
+
+      // Tworzymy nową notatkę z nowym timestampem
+      note = Note(newTimestamp, note.note)..images.addAll(note.images);
+    }
+
+    // Szukamy czy już istnieje notatka użytkownika o tym samym timestamp
+    final existingUserNoteIndex = dayUser.notes.indexWhere((n) => n.timestamp == note.timestamp);
+    _logger.info('- Indeks istniejącej notatki użytkownika: $existingUserNoteIndex');
+
+    if (existingUserNoteIndex != -1) {
+      // Aktualizujemy istniejącą notatkę użytkownika
+      dayUser.notes[existingUserNoteIndex] = note;
     } else {
-      // Dodajemy nową notatkę
+      // Dodajemy nową notatkę użytkownika
       dayUser.notes.add(note);
     }
 
@@ -203,7 +225,46 @@ class DayController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _logger.error('Błąd podczas zapisywania notatki użytkownika: $e');
+      _logger.error('Błąd podczas zapisywania notatki: $e');
+      return false;
+    }
+  }
+
+  /// Zapisuje notatkę wraz z obrazkami
+  Future<bool> saveNoteWithImages(
+    DateTime date,
+    Note note,
+    List<ImageDto> newImages,
+    List<String> imagesToDelete, {
+    DateTime? newTimestamp,
+  }) async {
+    try {
+      _logger.info('Start saveNoteWithImages');
+
+      // 1. Usuwamy oznaczone obrazki
+      for (final filename in imagesToDelete) {
+        await deleteImage(filename);
+      }
+
+      // 2. Wysyłamy nowe obrazki na serwer
+      final uploadedImages = <String>[];
+      for (final image in newImages) {
+        final filename = await uploadImage(image);
+        uploadedImages.add(filename);
+      }
+      _logger.info('- Nazwy uploadowanych obrazków: $uploadedImages');
+
+      // 3. Aktualizujemy listę obrazków w notatce
+      note.images.removeWhere((img) => imagesToDelete.contains(img)); // Usuwamy obrazki oznaczone do usunięcia
+      note.images.addAll(uploadedImages); // Dodajemy nowe obrazki
+      _logger.info('- Finalna lista obrazków w notatce: ${note.images}');
+
+      // 4. Zapisujemy notatkę
+      final success = await _saveUserNote(date, note, newTimestamp: newTimestamp);
+      _logger.info('- Zapis notatki: ${success ? 'sukces' : 'błąd'}');
+      return success;
+    } catch (e) {
+      _logger.error('Błąd podczas zapisywania notatki z obrazkami: $e');
       return false;
     }
   }
@@ -230,7 +291,7 @@ class DayController extends ChangeNotifier {
       // Dla notatki użytkownika ustawiamy tekst na null
       final noteIndex = dayUser.notes.indexWhere((note) => note.timestamp == timestamp);
       if (noteIndex != -1) {
-        // Aktualizujemy istniejącą notatkę
+        // Aktualizujemy istniejącą notatkę użytkownika
         dayUser.notes[noteIndex] = Note(timestamp, null);
       } else {
         // Jeśli nie znaleziono notatki, to znaczy że próbujemy ukryć notatkę systemową
@@ -279,47 +340,6 @@ class DayController extends ChangeNotifier {
       return success;
     } catch (e) {
       _logger.error('Błąd podczas usuwania obrazka: $e');
-      return false;
-    }
-  }
-
-  /// Zapisuje notatkę wraz z obrazkami
-  Future<bool> saveNoteWithImages(
-    DateTime date,
-    Note note,
-    List<ImageDto> newImages,
-    List<String> imagesToDelete,
-  ) async {
-    try {
-      _logger.info('Start saveNoteWithImages:');
-      _logger.info('- Aktualne obrazki w notatce: ${note.images}');
-      _logger.info('- Obrazki do usunięcia: $imagesToDelete');
-      _logger.info('- Nowe obrazki do dodania: ${newImages.length}');
-
-      // 1. Usuwamy oznaczone obrazki
-      for (final filename in imagesToDelete) {
-        await deleteImage(filename);
-      }
-
-      // 2. Wysyłamy nowe obrazki na serwer
-      final uploadedImages = <String>[];
-      for (final image in newImages) {
-        final filename = await uploadImage(image);
-        uploadedImages.add(filename);
-      }
-      _logger.info('- Nazwy uploadowanych obrazków: $uploadedImages');
-
-      // 3. Aktualizujemy listę obrazków w notatce
-      note.images.removeWhere((img) => imagesToDelete.contains(img)); // Usuwamy obrazki oznaczone do usunięcia
-      note.images.addAll(uploadedImages); // Dodajemy nowe obrazki
-      _logger.info('- Finalna lista obrazków w notatce: ${note.images}');
-
-      // 4. Zapisujemy notatkę
-      final success = await saveUserNote(date, note);
-      _logger.info('- Zapis notatki: ${success ? 'sukces' : 'błąd'}');
-      return success;
-    } catch (e) {
-      _logger.error('Błąd podczas zapisywania notatki z obrazkami: $e');
       return false;
     }
   }
@@ -381,18 +401,5 @@ class DayController extends ChangeNotifier {
     }
 
     return adjustedPeriods;
-  }
-
-  /// Parsuje dane CSV i tworzy strukturę danych
-  Future<void> parseCsvData(String csvContent) async {
-    if (_userInfo == null) {
-      _logger.error('Próba parsowania CSV bez danych użytkownika');
-      return;
-    }
-
-    final csvParser = CsvParser();
-    csvParser.parseCsv(csvContent, treshold, _userInfo!);
-    _csvData = csvParser.days;
-    notifyListeners();
   }
 }
