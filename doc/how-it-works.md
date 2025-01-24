@@ -11,3 +11,6 @@ Ponieważ nie można usuwać notatek systemowych trzeba utworzyć notatkę użyt
 
 ## Zmiana czasu notatki systemowej
 Sprawa wygląda podobnie jak z edycją - po zmianie czasu utworzona jest nowa notatka o wskazanym czasie i takiej samej zawartości jak stara notatka systemowa. Jednocześnie tworzona jest druga notatka użytkownika z tym samym czasem co notatka systemowa i z polem note=null. To ukryje notatkę systemową.
+
+## Kolejność notatek
+Kolejność notatek powinna być zgodna z ich czasem (timestamp). Problem może się pojawić wtedy gdy notatka jest podpięta w godzinach od 00:00 do 4:00 - ponieważ doba w programie nie zaczyna się od 00:00 ale od 4:00. Takie notatki powinny być wyświetlane na końcu listy a nie na początku.

@@ -16,6 +16,7 @@ import 'logger.dart';
 
 class CsvParser {
   static final _logger = Logger('CsvParser');
+  static const dayEndHour = 4;
 
   /// Parsuje zawartość pliku CSV i zwraca listę dni z danymi.
   ///
@@ -42,27 +43,25 @@ class CsvParser {
       var timestamp = _parseDate(line[2]);
       if (timestamp == null) continue;
 
-      // Dla celów grupowania określamy do którego dnia należy pomiar
-      final displayDate = timestamp.hour < 4 ? timestamp.subtract(const Duration(days: 1)) : timestamp;
-      final dateOnly = DateTime(displayDate.year, displayDate.month, displayDate.day);
+      // Pobierz lub stwórz dzień dla tego timestampa
+      // Pomiary przed dayEndHour są traktowane jako część poprzedniego dnia
+      final displayDate = timestamp.hour < dayEndHour ? 
+          timestamp.subtract(const Duration(days: 1)) : timestamp;
+      var date = DateTime(displayDate.year, displayDate.month, displayDate.day);
+      var day = daysMap[date] ?? DayData(date);
 
       var measurement = _tryParseMeasurement(line);
       if (measurement != null) {
-        if (!daysMap.containsKey(dateOnly)) {
-          daysMap[dateOnly] = DayData(dateOnly);
-        }
-        daysMap[dateOnly]?.measurements.add(measurement);
+        day.measurements.add(measurement);
       }
 
       if (line[13].isNotEmpty) {
         // Note
         String noteText = line[13];
         Note note = Note(timestamp, noteText);
-        if (!daysMap.containsKey(dateOnly)) {
-          daysMap[dateOnly] = DayData(dateOnly);
-        }
-        daysMap[dateOnly]?.notes.add(note);
+        day.notes.add(note);
       }
+      daysMap[date] = day;
     }
 
     List<DayData> days = daysMap.values.toList();

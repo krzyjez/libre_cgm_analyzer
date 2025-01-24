@@ -1,10 +1,14 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.35';
+const String appVersion = '4.0.36';
 
 /// Wersja API
 const apiVersion = '0.0.4';
 
 /* Historia zmian:
+
+4.0.36 (2025-01-24)
+    - Poprawiono kolejność wyświetlania notatek 
+    - Uproszczono logikę łączenia notatek systemowych i użytkownika
 
 4.0.35 (2025-01-23)
     - Uproszczono CsvParser - usunięto stan wewnętrzny

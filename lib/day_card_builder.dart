@@ -8,11 +8,25 @@ import 'dialogs/measurements_dialog.dart';
 import 'dialogs/note_dialog.dart';
 import 'dialogs/image_dialog.dart';
 import 'day_chart_builder.dart';
+import 'logger.dart';
 
 class DayCardBuilder {
+  static final _logger = Logger('DayCardBuilder');
   static const double chartHeight = 300.0;
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
+  static const dayEndHour = 23; // godzina końca dnia
+
+  /// Loguje kolejność notatek dla danego dnia
+  static void _logNotes(DateTime date, List<Note> notes, String info) {
+    final thatDay = (date.year == 2025 && date.month == 1 && date.day == 19);
+    if (!thatDay) return;
+    _logger.info('=== $info ===');
+    for (var note in notes) {
+      _logger.info('${note.timestamp}: ${note.note}');
+    }
+    _logger.info('===================================');
+  }
 
   /// Buduje widżet karty dla danego dnia
   /// To jest główny punkt wejścia - tworzy StatefulBuilder który pozwala na odświeżanie karty
@@ -220,7 +234,8 @@ class DayCardBuilder {
         _buildUserComment(context, controller, day, dayUser, setStateCallback),
         // wykres i statystyki
         _buildChartAndStats(context, controller, day, dayUser),
-        if (day.notes.isNotEmpty) _buildNotes(context, controller, day, dayUser, setStateCallback),
+        // buduję sekcję notatek
+        _buildNotes(context, controller, day, dayUser, setStateCallback)
       ],
     );
   }
@@ -330,45 +345,39 @@ class DayCardBuilder {
     // Pobieramy notatki użytkownika dla tego dnia
 
     // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
-    final userNotes = <DateTime, Note>{};
+    final userNotesDict = <DateTime, Note>{};
     if (dayUser != null) {
       for (var note in dayUser.notes) {
-        userNotes[note.timestamp] = note;
+        userNotesDict[note.timeOnly] = note;
       }
     }
 
-    // Grupujemy notatki systemowe po timestamp
-    final systemNotesByTime = <DateTime, List<String>>{};
+    // tworzymy systemowe notatki o ile nie pokrywają się z timestamp notatek użytkownika
+    _logNotes(day.date, day.notes, 'Notatki systemowe przed oczyszczaniem');
+
+    final systemNotes = <Note>[];
     for (var note in day.notes) {
-      systemNotesByTime.putIfAbsent(note.timestamp, () => []).add(note.note!);
-    }
-
-    // Tworzymy końcową listę notatek
-    final allNotes = <Note>[];
-
-    // Dodajemy wszystkie timestampy do zbioru
-    final allTimestamps = {...systemNotesByTime.keys, ...userNotes.keys};
-
-    // Iterujemy po wszystkich timestampach
-    for (var timestamp in allTimestamps) {
-      final userNote = userNotes[timestamp];
-
-      if (userNote != null) {
-        // Jeśli jest notatka użytkownika
-        if (userNote.note != null) {
-          // Jeśli notatka nie jest pusta (null), dodajemy ją
-          allNotes.add(userNote);
-        }
-        // Jeśli notatka jest pusta (null), pomijamy zarówno ją jak i notatkę systemową
-      } else if (systemNotesByTime.containsKey(timestamp)) {
-        // Jeśli nie ma notatki użytkownika (nawet pustej), używamy notatki systemowej
-        final combinedNote = systemNotesByTime[timestamp]!.join('\n');
-        allNotes.add(Note(timestamp, combinedNote));
+      if (!userNotesDict.containsKey(note.timeOnly)) {
+        systemNotes.add(note);
       }
     }
+
+    final userNotes = userNotesDict.values.toList();
+    _logNotes(day.date, userNotes, 'Notatki użytkownika');
+    _logNotes(day.date, systemNotes, 'Notatki systemowe');
+
+    final allNotes = [...userNotes, ...systemNotes];
+
+    // usuwam notatki bez tekstu - do ukrycia
+    allNotes.removeWhere((note) => note.note == null);
+
+    _logNotes(day.date, allNotes, 'before sorting');
 
     // Sortujemy notatki po czasie
-    allNotes.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    allNotes.sort((a, b) => _sortNotes(a, b));
+
+    // Wypisujemy notatki dla dnia 2025-01-19 z dodatkowymi informacjami
+    _logNotes(day.date, allNotes, 'after sorting');
 
     // Nie tworzymy widgetu jeśli nie ma notatek
     if (allNotes.isEmpty) {
@@ -423,11 +432,11 @@ class DayCardBuilder {
                             _createTextSpan(
                               '${DateFormat('HH:mm').format(note.timestamp)} ',
                               fontWeight: FontWeight.bold,
-                              color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                              color: userNotesDict.containsKey(note.timeOnly) ? Colors.indigo : Colors.black,
                             ),
                             _createTextSpan(
                               note.note,
-                              color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black,
+                              color: userNotesDict.containsKey(note.timeOnly) ? Colors.indigo : Colors.black,
                             ),
                           ],
                         ),
@@ -451,7 +460,7 @@ class DayCardBuilder {
                                     child: Icon(
                                       Icons.image,
                                       size: 16,
-                                      color: userNotes.containsKey(note.timestamp) ? Colors.indigo : Colors.black54,
+                                      color: userNotesDict.containsKey(note.timestamp) ? Colors.indigo : Colors.black54,
                                     ),
                                   ),
                                 ),
@@ -536,5 +545,19 @@ class DayCardBuilder {
         fontWeight: fontWeight,
       ),
     );
+  }
+
+  /// Porównuje czasy notatek z uwzględnieniem czasu końca dnia (see: [dayEndHour])
+  static int _sortNotes(Note a, Note b) {
+    var minutesA = _minutesFromTime(a.timestamp);
+    var minutesB = _minutesFromTime(b.timestamp);
+    return minutesA.compareTo(minutesB);
+  }
+
+  static int _minutesFromTime(DateTime time) {
+    var tresholdMinutes = dayEndHour * 60;
+    var minutes = time.hour * 60 + time.minute;
+    if (minutes < tresholdMinutes) minutes += 24 * 60;
+    return minutes;
   }
 }

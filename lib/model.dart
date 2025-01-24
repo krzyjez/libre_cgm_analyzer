@@ -3,6 +3,9 @@ import 'dart:typed_data';
 
 part 'model.g.dart';
 
+/// Godzina końca doby - pomiary do tej godziny są traktowane jako część poprzedniego dnia
+const dayEndHour = 4;
+
 /// Reprezentuje obrazek przed wysłaniem na serwer
 class ImageDto {
   /// Bajty obrazka
@@ -28,6 +31,9 @@ class Note {
   String? note;
   // lista obrazków przypisanych do notatki
   List<String> images = [];
+
+  /// Czas bez daty - używany do sortowania notatek
+  DateTime get timeOnly => DateTime(1970, 1, 1, timestamp.hour, timestamp.minute);
 
   Note(this.timestamp, this.note);
 
