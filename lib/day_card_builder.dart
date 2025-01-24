@@ -227,6 +227,7 @@ class DayCardBuilder {
     DayUser? dayUser,
     StateSetter setStateCallback,
   ) {
+    final notesToShow = controller.prepareNotesToShow(day);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -235,7 +236,7 @@ class DayCardBuilder {
         // wykres i statystyki
         _buildChartAndStats(context, controller, day, dayUser),
         // buduję sekcję notatek
-        _buildNotes(context, controller, day, dayUser, setStateCallback)
+        _buildNotes(context, controller, day, setStateCallback, notesToShow)
       ],
     );
   }
@@ -341,63 +342,20 @@ class DayCardBuilder {
 
   /// Buduje sekcję notatek.
   static Widget _buildNotes(
-      BuildContext context, DayController controller, DayData day, DayUser? dayUser, StateSetter setStateCallback) {
-    // Pobieramy notatki użytkownika dla tego dnia
-
-    // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
-    final userNotesDict = <DateTime, Note>{};
-    if (dayUser != null) {
-      for (var note in dayUser.notes) {
-        userNotesDict[note.timeOnly] = note;
-      }
-    }
-
-    // tworzymy systemowe notatki o ile nie pokrywają się z timestamp notatek użytkownika
-    _logNotes(day.date, day.notes, 'Notatki systemowe przed oczyszczaniem');
-
-    final systemNotes = <Note>[];
-    for (var note in day.notes) {
-      if (!userNotesDict.containsKey(note.timeOnly)) {
-        systemNotes.add(note);
-      }
-    }
-
-    final userNotes = userNotesDict.values.toList();
-    _logNotes(day.date, userNotes, 'Notatki użytkownika');
-    _logNotes(day.date, systemNotes, 'Notatki systemowe');
-
-    final allNotes = [...userNotes, ...systemNotes];
-
-    // usuwam notatki bez tekstu - do ukrycia
-    allNotes.removeWhere((note) => note.note == null);
-
-    _logNotes(day.date, allNotes, 'before sorting');
-
-    // Sortujemy notatki po czasie
-    allNotes.sort((a, b) => _sortNotes(a, b));
-
-    // Wypisujemy notatki dla dnia 2025-01-19 z dodatkowymi informacjami
-    _logNotes(day.date, allNotes, 'after sorting');
-
+      BuildContext context, DayController controller, DayData day, StateSetter setStateCallback, List<Note> notes) {
     // Nie tworzymy widgetu jeśli nie ma notatek
-    if (allNotes.isEmpty) {
+    if (notes.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: const Column(
           children: [
-            TextButton.icon(
-              onPressed: () {
-                NoteDialog.show(
-                  context: context,
-                  controller: controller,
-                  date: day.date,
-                  initialTime: TimeOfDay.now(),
-                  setStateCallback: setStateCallback,
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Dodaj notatkę'),
+            Divider(),
+            Text(
+              'Brak notatek',
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.grey,
+              ),
             ),
           ],
         ),
@@ -409,7 +367,15 @@ class DayCardBuilder {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ...allNotes.map((note) => Padding(
+          const Divider(),
+          const Text(
+            'Notatki:',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          ...notes.map((note) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: InkWell(
                   onTap: () {
@@ -422,69 +388,46 @@ class DayCardBuilder {
                       setStateCallback: setStateCallback,
                     );
                   },
-                  mouseCursor: SystemMouseCursors.click,
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  child: Row(
                     children: [
-                      RichText(
-                        text: TextSpan(
-                          children: [
-                            _createTextSpan(
-                              '${DateFormat('HH:mm').format(note.timestamp)} ',
-                              fontWeight: FontWeight.bold,
-                              color: userNotesDict.containsKey(note.timeOnly) ? Colors.indigo : Colors.black,
-                            ),
-                            _createTextSpan(
-                              note.note,
-                              color: userNotesDict.containsKey(note.timeOnly) ? Colors.indigo : Colors.black,
-                            ),
-                          ],
+                      Expanded(
+                        child: RichText(
+                          text: TextSpan(
+                            children: [
+                              _createTextSpan(
+                                '${DateFormat('HH:mm').format(note.timestamp)} ',
+                                fontWeight: FontWeight.bold,
+                                color: note.userNote ? Colors.indigo : Colors.black,
+                              ),
+                              _createTextSpan(
+                                note.note,
+                                color: note.userNote ? Colors.indigo : Colors.black,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      if (note.images.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        ...note.images.map((imageName) => Tooltip(
-                              message: 'Kliknij aby zobaczyć obrazek',
-                              child: MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    ImageDialog.show(
-                                      context: context,
-                                      controller: controller,
-                                      imageName: imageName,
-                                    );
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                                    child: Icon(
-                                      Icons.image,
-                                      size: 16,
-                                      color: userNotesDict.containsKey(note.timestamp) ? Colors.indigo : Colors.black54,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )),
-                      ],
+                      if (note.images.isNotEmpty)
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: Icon(
+                            Icons.image,
+                            size: 16,
+                            color: note.userNote ? Colors.indigo : Colors.black54,
+                          ),
+                          onPressed: () {
+                            ImageDialog.show(
+                              context: context,
+                              controller: controller,
+                              imageName: note.images.first,
+                            );
+                          },
+                        ),
                     ],
                   ),
                 ),
               )),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () {
-              NoteDialog.show(
-                context: context,
-                controller: controller,
-                date: day.date,
-                initialTime: TimeOfDay.now(),
-                setStateCallback: setStateCallback,
-              );
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Dodaj notatkę'),
-          ),
         ],
       ),
     );
@@ -545,19 +488,5 @@ class DayCardBuilder {
         fontWeight: fontWeight,
       ),
     );
-  }
-
-  /// Porównuje czasy notatek z uwzględnieniem czasu końca dnia (see: [dayEndHour])
-  static int _sortNotes(Note a, Note b) {
-    var minutesA = _minutesFromTime(a.timestamp);
-    var minutesB = _minutesFromTime(b.timestamp);
-    return minutesA.compareTo(minutesB);
-  }
-
-  static int _minutesFromTime(DateTime time) {
-    var tresholdMinutes = dayEndHour * 60;
-    var minutes = time.hour * 60 + time.minute;
-    if (minutes < tresholdMinutes) minutes += 24 * 60;
-    return minutes;
   }
 }

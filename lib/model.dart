@@ -32,8 +32,12 @@ class Note {
   // lista obrazków przypisanych do notatki
   List<String> images = [];
 
-  /// Czas bez daty - używany do sortowania notatek
+  /// Czas bez daty - użytkowany do sortowania notatek
   DateTime get timeOnly => DateTime(1970, 1, 1, timestamp.hour, timestamp.minute);
+
+  /// Jeśli true to znaczy że jest to notatka użytkownika - określane dynamicznie po wczytaniu danych
+  @JsonKey(includeToJson: false, includeFromJson: false)
+  bool userNote = false;
 
   Note(this.timestamp, this.note);
 
@@ -108,11 +112,8 @@ extension DayDataListExtension on List<DayData> {
   /// Zwraca null jeśli nie znaleziono
   DayData? findByDate(DateTime date) {
     try {
-      return firstWhere((day) =>
-        day.date.year == date.year &&
-        day.date.month == date.month &&
-        day.date.day == date.day
-      );
+      return firstWhere(
+          (day) => day.date.year == date.year && day.date.month == date.month && day.date.day == date.day);
     } catch (e) {
       return null;
     }

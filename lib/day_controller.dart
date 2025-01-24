@@ -401,4 +401,48 @@ class DayController extends ChangeNotifier {
 
     return adjustedPeriods;
   }
+
+  /// Przygotowuje listę notatek do wyświetlenia, łącząc notatki systemowe i użytkownika
+  List<Note> prepareNotesToShow(DayData day) {
+    final dayUser = findUserDayByDate(day.date);
+    
+    // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
+    final userNotesDict = <DateTime, Note>{};
+    if (dayUser != null) {
+      for (var note in dayUser.notes) {
+        note.userNote = true;
+        userNotesDict[note.timeOnly] = note;
+      }
+    }
+
+    // tworzymy systemowe notatki o ile nie pokrywają się z timestamp notatek użytkownika
+    final systemNotes = <Note>[];
+    for (var note in day.notes) {
+      if (!userNotesDict.containsKey(note.timeOnly)) {
+        systemNotes.add(note);
+      }
+    }
+
+    final allNotes = [...userNotesDict.values, ...systemNotes];
+
+    // usuwam notatki bez tekstu - do ukrycia
+    allNotes.removeWhere((note) => note.note == null);
+    allNotes.sort((a, b) => _compareNotes(a, b));
+    
+    return allNotes;
+  }
+
+  /// Porównuje czasy notatek z uwzględnieniem czasu końca dnia
+  int _compareNotes(Note a, Note b) {
+    var minutesA = _minutesFromTime(a.timestamp);
+    var minutesB = _minutesFromTime(b.timestamp);
+    return minutesA.compareTo(minutesB);
+  }
+
+  int _minutesFromTime(DateTime time) {
+    var tresholdMinutes = dayEndHour * 60;
+    var minutes = time.hour * 60 + time.minute;
+    if (minutes < tresholdMinutes) minutes += 24 * 60;
+    return minutes;
+  }
 }
