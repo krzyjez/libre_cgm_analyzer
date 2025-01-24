@@ -8,25 +8,12 @@ import 'dialogs/measurements_dialog.dart';
 import 'dialogs/note_dialog.dart';
 import 'dialogs/image_dialog.dart';
 import 'day_chart_builder.dart';
-import 'logger.dart';
 
 class DayCardBuilder {
-  static final _logger = Logger('DayCardBuilder');
   static const double chartHeight = 300.0;
   static const noteColor = Colors.amber;
   static const glucoseColor = Colors.blue;
   static const dayEndHour = 23; // godzina końca dnia
-
-  /// Loguje kolejność notatek dla danego dnia
-  static void _logNotes(DateTime date, List<Note> notes, String info) {
-    final thatDay = (date.year == 2025 && date.month == 1 && date.day == 19);
-    if (!thatDay) return;
-    _logger.info('=== $info ===');
-    for (var note in notes) {
-      _logger.info('${note.timestamp}: ${note.note}');
-    }
-    _logger.info('===================================');
-  }
 
   /// Buduje widżet karty dla danego dnia
   /// To jest główny punkt wejścia - tworzy StatefulBuilder który pozwala na odświeżanie karty
@@ -228,13 +215,14 @@ class DayCardBuilder {
     StateSetter setStateCallback,
   ) {
     final notesToShow = controller.prepareNotesToShow(day);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Komentarz użytkownika
         _buildUserComment(context, controller, day, dayUser, setStateCallback),
         // wykres i statystyki
-        _buildChartAndStats(context, controller, day, dayUser),
+        _buildChartAndStats(context, controller, day, dayUser, notesToShow),
         // buduję sekcję notatek
         _buildNotes(context, controller, day, setStateCallback, notesToShow)
       ],
@@ -242,7 +230,13 @@ class DayCardBuilder {
   }
 
   /// Buduje sekcję wykresu i statystyk.
-  static Widget _buildChartAndStats(BuildContext context, DayController controller, DayData day, DayUser? dayUser) {
+  static Widget _buildChartAndStats(
+    BuildContext context,
+    DayController controller,
+    DayData day,
+    DayUser? dayUser,
+    List<Note> notes,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,7 +244,7 @@ class DayCardBuilder {
         Expanded(
           child: SizedBox(
             height: chartHeight,
-            child: _buildChart(context, controller, day),
+            child: _buildChart(context, controller, day, dayUser, notes),
           ),
         ),
         // Odstęp między wykresem a statystykami
@@ -266,8 +260,20 @@ class DayCardBuilder {
   }
 
   /// Buduje wykres na podstawie danych dnia.
-  static Widget _buildChart(BuildContext context, DayController controller, DayData day) {
-    return DayChartBuilder.build(context, controller, day);
+  static Widget _buildChart(
+    BuildContext context,
+    DayController controller,
+    DayData day,
+    DayUser? dayUser,
+    List<Note> notes,
+  ) {
+    return Container(
+      padding: const EdgeInsets.only(right: 8),
+      child: SizedBox(
+        height: chartHeight,
+        child: DayChartBuilder.build(context, controller, day, notes),
+      ),
+    );
   }
 
   /// Buduje sekcję statystyk pokazującą przekroczenia poziomu glukozy.
@@ -343,38 +349,11 @@ class DayCardBuilder {
   /// Buduje sekcję notatek.
   static Widget _buildNotes(
       BuildContext context, DayController controller, DayData day, StateSetter setStateCallback, List<Note> notes) {
-    // Nie tworzymy widgetu jeśli nie ma notatek
-    if (notes.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(8.0),
-        child: const Column(
-          children: [
-            Divider(),
-            Text(
-              'Brak notatek',
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Container(
       padding: const EdgeInsets.all(8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Divider(),
-          const Text(
-            'Notatki:',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
           ...notes.map((note) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4.0),
                 child: InkWell(
@@ -428,6 +407,17 @@ class DayCardBuilder {
                   ),
                 ),
               )),
+          TextButton.icon(
+              onPressed: () {
+                NoteDialog.show(
+                    context: context,
+                    controller: controller,
+                    date: day.date,
+                    initialTime: TimeOfDay.now(),
+                    setStateCallback: setStateCallback);
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Dodaj notatkę'))
         ],
       ),
     );

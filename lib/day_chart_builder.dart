@@ -5,9 +5,12 @@ import 'dart:math';
 import 'chart_data.dart';
 import 'model.dart';
 import 'day_controller.dart';
+import 'logger.dart';
 
 /// Klasa odpowiedzialna za budowanie wykresu dla karty dnia
 class DayChartBuilder {
+  static final _logger = Logger('DayChartBuilder');
+
   // Stałe wykresu
   static const double chartHeight = 300.0;
 
@@ -26,7 +29,7 @@ class DayChartBuilder {
   static const int defaultEndMinute = 59; // domyślna minuta końcowa dla ostatniej godziny
 
   /// Buduje wykres na podstawie danych dnia
-  static Widget build(BuildContext context, DayController controller, DayData day) {
+  static Widget build(BuildContext context, DayController controller, DayData day, List<Note> notes) {
     // Przygotowanie danych do wykresu
     final chartData = day.measurements
         .map((measurement) => ChartData(
@@ -35,11 +38,11 @@ class DayChartBuilder {
             ))
         .toList();
 
-    final tooltipBehavior = _buildTooltipBehavior(day);
+    final tooltipBehavior = _buildTooltipBehavior(day, notes);
 
     // Pobieramy skorygowane okresy
     final adjustedPeriods = controller.getAdjustedPeriods(day);
-
+    _logNotes(day.date, notes, 'Notatki dla wykresu');
     // Tworzenie wykresu SfCartesianChart z seriami danych
     return Container(
       padding: const EdgeInsets.all(8.0),
@@ -61,7 +64,7 @@ class DayChartBuilder {
           ),
           // Seria punktowa - pokazuje miejsca, gdzie dodano notatki
           ScatterSeries<ChartData, DateTime>(
-            dataSource: day.notes.map((note) => ChartData(note.timestamp, 100, tooltipText: "buba")).toList(),
+            dataSource: notes.map((note) => ChartData(note.timestamp, 100)).toList(),
             xValueMapper: (ChartData data, _) => data.x,
             yValueMapper: (ChartData data, _) => data.y,
             dataLabelMapper: (ChartData data, _) => data.tooltipText,
@@ -110,12 +113,23 @@ class DayChartBuilder {
     );
   }
 
+  /// Loguje kolejność notatek dla danego dnia
+  static void _logNotes(DateTime date, List<Note> notes, String info) {
+    final thatDay = (date.year == 2025 && date.month == 1 && date.day == 19);
+    if (!thatDay) return;
+    _logger.info('=== $info ===');
+    for (var note in notes) {
+      _logger.info('${note.timestamp}: ${note.note} (user: ${note.userNote})');
+    }
+    _logger.info('===================================');
+  }
+
   /// Buduje zachowanie tooltipa dla wykresu.
   ///
   /// Metoda tworzy tooltipa, który wyświetla różne informacje w zależności od serii danych:
   /// - dla notatek (seriesIndex == 1) wyświetla czas i treść notatki na żółtym tle
   /// - dla pomiarów glukozy (seriesIndex == 0) wyświetla czas i wartość pomiaru na niebieskim tle
-  static TooltipBehavior _buildTooltipBehavior(DayData day) {
+  static TooltipBehavior _buildTooltipBehavior(DayData day, List<Note> notes) {
     return TooltipBehavior(
       enable: true,
       color: Colors.white, // daje biały kolor gdyż gdy później przychodzi kontener z decoration
@@ -134,7 +148,7 @@ class DayChartBuilder {
 
         // Formatowanie tekstu w zależności od typu serii
         final text = seriesIndex == 1
-            ? "${DateFormat('HH:mm').format(day.notes[pointIndex].timestamp)} ${day.notes[pointIndex].note}" // format dla notatek
+            ? "${DateFormat('HH:mm').format(notes[pointIndex].timestamp)} ${notes[pointIndex].note}" // format dla notatek
             : "${DateFormat('HH:mm').format((data as ChartData).x)} ${data.y.toStringAsFixed(1)} mg/dL"; // format dla pomiarów
 
         // Zwracamy kontener z odpowiednim kolorem tła i sformatowanym tekstem

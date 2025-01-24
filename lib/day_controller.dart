@@ -405,7 +405,7 @@ class DayController extends ChangeNotifier {
   /// Przygotowuje listę notatek do wyświetlenia, łącząc notatki systemowe i użytkownika
   List<Note> prepareNotesToShow(DayData day) {
     final dayUser = findUserDayByDate(day.date);
-    
+
     // Tworzymy mapę timestamp -> notatka dla notatek użytkownika
     final userNotesDict = <DateTime, Note>{};
     if (dayUser != null) {
@@ -428,7 +428,7 @@ class DayController extends ChangeNotifier {
     // usuwam notatki bez tekstu - do ukrycia
     allNotes.removeWhere((note) => note.note == null);
     allNotes.sort((a, b) => _compareNotes(a, b));
-    
+
     return allNotes;
   }
 
@@ -440,9 +440,7 @@ class DayController extends ChangeNotifier {
   }
 
   int _minutesFromTime(DateTime time) {
-    var tresholdMinutes = dayEndHour * 60;
     var minutes = time.hour * 60 + time.minute;
-    if (minutes < tresholdMinutes) minutes += 24 * 60;
     return minutes;
   }
 }

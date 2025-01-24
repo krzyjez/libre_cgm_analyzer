@@ -2,7 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'logger.dart';
 import 'api_service.dart';
@@ -130,6 +132,30 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
+  /// Pobiera dane użytkownika i zapisuje je do pliku
+  Future<void> downloadUserData(BuildContext context) async {
+    try {
+      final userData = await _apiService.loadUserInfo(defaultTreshold);
+      final jsonData = const JsonEncoder.withIndent('  ').convert(userData.toJson());
+
+      // Konwertuj string na bajty
+      final bytes = Uint8List.fromList(utf8.encode(jsonData));
+
+      // Zapisz plik
+      await FileSaver.instance.saveFile(name: 'user_data.json', bytes: bytes, ext: 'json', mimeType: MimeType.json);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Dane użytkownika zostały zapisane')));
+      }
+    } catch (e) {
+      _logger.error('Błąd podczas pobierania danych użytkownika: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Błąd podczas pobierania danych użytkownika'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
   /// Wczytuje dane z API
   ///
   /// Pobiera:
@@ -208,10 +234,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_upload),
-            tooltip: 'Dodaj plik CSV',
-            onPressed: () => pickCsvFile(context),
-          ),
+              icon: const Icon(Icons.download),
+              tooltip: 'Pobierz dane użytkownika',
+              onPressed: () => downloadUserData(context)),
+          IconButton(
+              icon: const Icon(Icons.file_upload), tooltip: 'Dodaj plik CSV', onPressed: () => pickCsvFile(context)),
         ],
       ),
       body: ListenableBuilder(

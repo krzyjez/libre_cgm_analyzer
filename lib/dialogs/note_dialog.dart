@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import '../day_controller.dart';
 import '../model.dart';
+import '../logger.dart';
 import 'base_dialog.dart';
 
 /// Dialog do edycji lub dodawania notatki
@@ -54,6 +55,8 @@ class _NoteDialogState extends State<NoteDialog> {
 
   /// Lista obrazków do usunięcia
   final List<String> _imagesToDelete = [];
+
+  static final _logger = Logger('NoteDialog');
 
   late TextEditingController timeController;
   late TextEditingController textController;
@@ -119,14 +122,21 @@ class _NoteDialogState extends State<NoteDialog> {
           throw const FormatException('Nieprawidłowa godzina lub minuta');
         }
 
-        final newTimestamp = DateTime(
-          widget.date.year,
-          widget.date.month,
-          widget.date.day,
+        final date = widget.date;
+        _logger.info('notatka dla dnia $date}');
+        var newTimestamp = DateTime(
+          date.year,
+          date.month,
+          date.day,
           hour,
           minute,
         );
+        // Jeśli godzina jest przed dayEndHour, używamy daty następnego dnia
 
+        if (hour < dayEndHour) {
+          newTimestamp = newTimestamp.add(const Duration(days: 1));
+        }
+        _logger.info('notatka po korekcie $newTimestamp}');
         // Tworzymy nową notatkę z oryginalnym timestampem (jeśli to edycja)
         Note note;
         if (widget.originalNote != null) {

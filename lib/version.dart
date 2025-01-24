@@ -1,10 +1,14 @@
 /// Aktualna wersja aplikacji
-const String appVersion = '4.0.36';
+const String appVersion = '4.0.37';
 
 /// Wersja API
 const apiVersion = '0.0.4';
 
 /* Historia zmian:
+
+4.0.37 (2025-01-24)
+    - Poprawiono przypisywanie notatek do dni - notatki z godzin 00:00-04:00 są teraz prawidłowo przypisywane do następnego dnia
+    - Uproszczono sortowanie notatek w DayController
 
 4.0.36 (2025-01-24)
     - Poprawiono kolejność wyświetlania notatek 
